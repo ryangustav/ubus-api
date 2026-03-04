@@ -87,7 +87,7 @@ jobs:
           mv .env.prod .env 2>/dev/null || true
           docker pull "$IMAGE"
           export IMAGE="$IMAGE"
-          docker compose -f docker-compose.prod.yml up -d api
+          docker compose -f docker-compose.prod.yml up -d
           docker image prune -f
           SCRIPT
           chmod +x deploy.sh
@@ -108,7 +108,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: "docker-compose.prod.yml,.env.prod"
+          source: "docker-compose.prod.yml,.env.prod,nginx"
           target: ${{ secrets.DEPLOY_PATH || '~/ubus' }}
 
       - name: Deploy via SSH

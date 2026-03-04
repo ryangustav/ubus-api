@@ -86,7 +86,20 @@ Para a API conectar ao Postgres e Redis no **host** (containers separados), use 
 - `DATABASE_URL`: `postgresql://ubus:ubus@host.docker.internal:5432/ubus`
 - `REDIS_URL`: `redis://host.docker.internal:6379`
 
-## 7. Postgres e Redis
+## 7. Portas 80 e 443
+
+O Nginx faz proxy reverso para a API:
+- **80** (HTTP): `http://seu-ip/` ou `http://seu-dominio/`
+- **443** (HTTPS): configure certificados em `nginx/certs/` e ative `nginx/conf.d/ssl.conf`
+
+Para HTTPS com Let's Encrypt:
+```bash
+# Na VM, com domínio apontando para o IP
+sudo certbot certonly --standalone -d seu-dominio.com
+# Copie os certs para nginx/certs/ e renomeie ssl.conf.example → ssl.conf
+```
+
+## 8. Postgres e Redis
 
 Use um dos cenários:
 
@@ -94,7 +107,7 @@ Use um dos cenários:
 - **Compute com Docker**: suba postgres e redis em containers
 - **Serviços externos**: Neon, Supabase, Redis Cloud, etc.
 
-## 8. Deploy
+## 9. Deploy
 
 O deploy roda automaticamente ao fazer **push na branch `main`**.
 
@@ -105,4 +118,4 @@ Para apenas fazer build e push da imagem (sem deploy na VM): **Run workflow** �
 ## Fluxo do pipeline
 
 1. **build-and-push**: Build da imagem Docker → Push para OCIR
-2. **deploy**: SCP do docker-compose.prod.yml → SSH na VM → `docker pull` → `docker compose up -d`
+2. **deploy**: SCP (docker-compose, .env, nginx) → SSH na VM → `docker pull` → `docker compose up -d` (api + nginx)

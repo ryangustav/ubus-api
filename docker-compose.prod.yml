@@ -1,6 +1,7 @@
 # Produção - Oracle Cloud
 # Postgres e Redis devem estar rodando (OCI ou externos)
 # A API usa DATABASE_URL e REDIS_URL do ambiente
+# Nginx expõe 80 (HTTP) e 443 (HTTPS) → proxy para a API
 
 services:
   api:
@@ -9,8 +10,8 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -25,3 +26,17 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: ubus-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy

@@ -62,14 +62,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy docker-compose to server
+      - name: Create OCI token file
+        run: printf '%s' "${{ secrets.OCI_AUTH_TOKEN }}" > .oci_token
+
+      - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: "docker-compose.prod.yml"
+          source: "docker-compose.prod.yml,.oci_token"
           target: ${{ secrets.DEPLOY_PATH || '~/ubus' }}
 
       - name: Deploy via SSH
@@ -80,20 +83,15 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           request_pty: true
-          envs: |
-            IMAGE=${{ needs.build-and-push.outputs.image }}
-            DEPLOY_PATH=${{ secrets.DEPLOY_PATH }}
-            OCI_REGISTRY=${{ secrets.OCI_REGION }}.ocir.io
-            OCI_NAMESPACE=${{ secrets.OCI_TENANCY_NAMESPACE }}
-            OCI_USER=${{ secrets.OCI_CLI_USER }}
-            OCI_AUTH_TOKEN=${{ secrets.OCI_AUTH_TOKEN }}
+          envs: IMAGE=${{ needs.build-and-push.outputs.image }},DEPLOY_PATH=${{ secrets.DEPLOY_PATH }},OCI_REGISTRY=${{ secrets.OCI_REGION }}.ocir.io,OCI_NAMESPACE=${{ secrets.OCI_TENANCY_NAMESPACE }},OCI_USER=${{ secrets.OCI_CLI_USER }}
           script: |
             set -e
             DEPLOY_DIR="${DEPLOY_PATH:-$HOME/ubus}"
             mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
-            if [ -z "$OCI_AUTH_TOKEN" ]; then echo "OCI_AUTH_TOKEN is not set"; exit 1; fi
-            printf '%s' "$OCI_AUTH_TOKEN" | docker login "$OCI_REGISTRY" -u "$OCI_NAMESPACE/$OCI_USER" --password-stdin
+            if [ ! -f .oci_token ]; then echo "OCI token file not found"; exit 1; fi
+            cat .oci_token | docker login "$OCI_REGISTRY" -u "$OCI_NAMESPACE/$OCI_USER" --password-stdin
+            rm -f .oci_token
             echo "Pulling image $IMAGE"
             docker pull "$IMAGE"
             export IMAGE

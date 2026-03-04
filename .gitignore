@@ -39,3 +39,4 @@ drizzle/meta/
 
 # Credenciais sensíveis
 scripts/super-admin-credentials.txt
+.oci_token

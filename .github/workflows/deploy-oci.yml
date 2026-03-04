@@ -64,18 +64,13 @@ jobs:
 
       - name: Create deploy script
         env:
-          OCI_AUTH_TOKEN: ${{ secrets.OCI_AUTH_TOKEN }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           IMAGE: ${{ needs.build-and-push.outputs.image }}
-          OCI_REGISTRY: ${{ secrets.OCI_REGION }}.ocir.io
-          OCI_NAMESPACE: ${{ secrets.OCI_TENANCY_NAMESPACE }}
-          OCI_USER: ${{ secrets.OCI_CLI_USER }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           if [ -n "$DEPLOY_PATH" ]; then DEPLOY_DIR="$DEPLOY_PATH"; else DEPLOY_DIR='$HOME/ubus'; fi
-          TOKEN_B64=$(printf '%s' "$OCI_AUTH_TOKEN" | base64 | tr -d '\n')
           echo "mkdir -p $DEPLOY_DIR" > prepare.sh
           cat > .env.prod << ENV
           IMAGE=$IMAGE
@@ -90,8 +85,6 @@ jobs:
           set -e
           cd "$DEPLOY_DIR"
           mv .env.prod .env 2>/dev/null || true
-          echo "$TOKEN_B64" | base64 -d | docker login "$OCI_REGISTRY" -u "$OCI_NAMESPACE/$OCI_USER" --password-stdin
-          echo "Pulling image $IMAGE"
           docker pull "$IMAGE"
           export IMAGE="$IMAGE"
           docker compose -f docker-compose.prod.yml up -d api

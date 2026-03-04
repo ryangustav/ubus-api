@@ -85,9 +85,9 @@ jobs:
           set -e
           cd "$DEPLOY_DIR"
           mv .env.prod .env 2>/dev/null || true
-          docker pull "$IMAGE"
           export IMAGE="$IMAGE"
-          docker compose -f docker-compose.prod.yml up -d
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d --force-recreate
           docker image prune -f
           SCRIPT
           chmod +x deploy.sh

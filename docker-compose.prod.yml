@@ -1,14 +1,42 @@
 # Produção - Oracle Cloud
-# Postgres e Redis devem estar rodando (OCI ou externos)
-# A API usa DATABASE_URL e REDIS_URL do ambiente
+# Postgres e Redis rodam no mesmo compose; API usa rede interna
 # Nginx expõe 80 (HTTP) e 443 (HTTPS) → proxy para a API
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ubus-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ubus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ubus
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ubus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ubus-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api:
     image: ${IMAGE:-ubus-api:latest}
     container_name: ubus-api
     restart: unless-stopped
-    network_mode: host
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -23,13 +51,16 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   nginx:
     image: nginx:alpine
     container_name: ubus-nginx
     restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "80:80"
       - "443:443"
@@ -39,3 +70,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -66,17 +66,18 @@ jobs:
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           IMAGE: ${{ needs.build-and-push.outputs.image }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           if [ -n "$DEPLOY_PATH" ]; then DEPLOY_DIR="$DEPLOY_PATH"; else DEPLOY_DIR='$HOME/ubus'; fi
           echo "mkdir -p $DEPLOY_DIR" > prepare.sh
+          ENCODED_PASS=$(python3 -c "import urllib.parse, os; print(urllib.parse.quote(os.environ.get('POSTGRES_PASSWORD', ''), safe=''))")
           {
             echo "IMAGE=$IMAGE"
-            echo "DATABASE_URL=$DATABASE_URL"
-            echo "REDIS_URL=$REDIS_URL"
-            echo "REDIS_HOST=host.docker.internal"
+            echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
+            echo "DATABASE_URL=postgresql://ubus:${ENCODED_PASS}@postgres:5432/ubus"
+            echo "REDIS_URL=redis://redis:6379"
+            echo "REDIS_HOST=redis"
             echo "REDIS_PORT=6379"
             echo "JWT_SECRET=$JWT_SECRET"
           } > .env.prod

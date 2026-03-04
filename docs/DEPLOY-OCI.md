@@ -53,8 +53,7 @@ No repositório: **Settings** → **Secrets and variables** → **Actions**
 | `DEPLOY_SSH_KEY` | Chave privada SSH para a VM |
 | `DEPLOY_PATH` | Caminho absoluto no servidor (ex: `/home/ubuntu/ubus-api`) |
 | `DEPLOY_PORT` | Porta SSH (opcional, default 22) |
-| `DATABASE_URL` | URL do Postgres (ex: `postgresql://ubus:ubus@host.docker.internal:5432/ubus`) |
-| `REDIS_URL` | URL do Redis (ex: `redis://host.docker.internal:6379`) |
+| `POSTGRES_PASSWORD` | Senha do Postgres (usada pelo container e pela API) |
 | `JWT_SECRET` | Chave secreta para JWT (mín. 32 caracteres) |
 
 ## 5. Preparar a VM na OCI
@@ -79,12 +78,10 @@ mkdir -p ~/ubus
 
 ## 6. Variáveis de ambiente (GitHub Secrets)
 
-O deploy cria o `.env` automaticamente a partir dos secrets `DATABASE_URL`, `REDIS_URL` e `JWT_SECRET`.
+O deploy cria o `.env` automaticamente. Postgres e Redis rodam no mesmo compose que a API (rede interna Docker).
 
-Para a API conectar ao Postgres e Redis no **host** (containers separados), use `host.docker.internal`:
-
-- `DATABASE_URL`: `postgresql://ubus:ubus@host.docker.internal:5432/ubus`
-- `REDIS_URL`: `redis://host.docker.internal:6379`
+- `POSTGRES_PASSWORD`: senha do usuário `ubus` no Postgres (pode conter caracteres especiais)
+- `JWT_SECRET`: chave secreta para JWT (mín. 32 caracteres)
 
 ## 7. Portas 80 e 443
 
@@ -101,11 +98,13 @@ sudo certbot certonly --standalone -d seu-dominio.com
 
 ## 8. Postgres e Redis
 
-Use um dos cenários:
+Postgres e Redis estão incluídos no `docker-compose.prod.yml` e rodam na mesma rede que a API. Os dados persistem em volumes Docker (`postgres_data`, `redis_data`).
 
-- **OCI MySQL HeatWave** (compatível Postgres) ou **Autonomous Database**
-- **Compute com Docker**: suba postgres e redis em containers
-- **Serviços externos**: Neon, Supabase, Redis Cloud, etc.
+Na primeira execução, rode as migrations:
+```bash
+# Dentro do diretório do projeto na VM:
+docker compose -f docker-compose.prod.yml run --rm api npm run db:migrate:prod
+```
 
 ## 9. Deploy
 
@@ -118,4 +117,4 @@ Para apenas fazer build e push da imagem (sem deploy na VM): **Run workflow** �
 ## Fluxo do pipeline
 
 1. **build-and-push**: Build da imagem Docker → Push para OCIR
-2. **deploy**: SCP (docker-compose, .env, nginx) → SSH na VM → `docker pull` → `docker compose up -d` (api + nginx)
+2. **deploy**: SCP (docker-compose, .env, nginx) → SSH na VM → `docker pull` → `docker compose up -d` (postgres + redis + api + nginx)

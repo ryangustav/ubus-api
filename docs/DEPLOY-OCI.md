@@ -51,8 +51,11 @@ No repositório: **Settings** → **Secrets and variables** → **Actions**
 | `DEPLOY_HOST` | IP ou hostname da VM |
 | `DEPLOY_USER` | Usuário SSH (ex: `ubuntu`, `opc`) |
 | `DEPLOY_SSH_KEY` | Chave privada SSH para a VM |
-| `DEPLOY_PATH` | Caminho absoluto no servidor (ex: `/home/opc/ubus`) |
+| `DEPLOY_PATH` | Caminho absoluto no servidor (ex: `/home/ubuntu/ubus-api`) |
 | `DEPLOY_PORT` | Porta SSH (opcional, default 22) |
+| `DATABASE_URL` | URL do Postgres (ex: `postgresql://ubus:ubus@host.docker.internal:5432/ubus`) |
+| `REDIS_URL` | URL do Redis (ex: `redis://host.docker.internal:6379`) |
+| `JWT_SECRET` | Chave secreta para JWT (mín. 32 caracteres) |
 
 ## 5. Preparar a VM na OCI
 
@@ -74,18 +77,14 @@ sudo chmod +x /usr/local/bin/docker-compose
 mkdir -p ~/ubus
 ```
 
-## 6. Configurar .env na VM
+## 6. Variáveis de ambiente (GitHub Secrets)
 
-Crie `~/ubus/.env` na VM:
+O deploy cria o `.env` automaticamente a partir dos secrets `DATABASE_URL`, `REDIS_URL` e `JWT_SECRET`.
 
-```env
-IMAGE=gru.ocir.io/tenancy/namespace/ubus-api:latest
-DATABASE_URL=postgresql://user:pass@host:5432/ubus
-REDIS_URL=redis://host:6379
-REDIS_HOST=redis-host
-REDIS_PORT=6379
-JWT_SECRET=seu-jwt-secret-forte
-```
+Para a API conectar ao Postgres e Redis no **host** (containers separados), use `host.docker.internal`:
+
+- `DATABASE_URL`: `postgresql://ubus:ubus@host.docker.internal:5432/ubus`
+- `REDIS_URL`: `redis://host.docker.internal:6379`
 
 ## 7. Postgres e Redis
 

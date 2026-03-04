@@ -7,6 +7,8 @@ services:
     image: ${IMAGE:-ubus-api:latest}
     container_name: ubus-api
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "3001:3001"
     environment:

@@ -70,18 +70,26 @@ jobs:
           OCI_REGISTRY: ${{ secrets.OCI_REGION }}.ocir.io
           OCI_NAMESPACE: ${{ secrets.OCI_TENANCY_NAMESPACE }}
           OCI_USER: ${{ secrets.OCI_CLI_USER }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           if [ -n "$DEPLOY_PATH" ]; then DEPLOY_DIR="$DEPLOY_PATH"; else DEPLOY_DIR='$HOME/ubus'; fi
           TOKEN_B64=$(printf '%s' "$OCI_AUTH_TOKEN" | base64 | tr -d '\n')
           echo "mkdir -p $DEPLOY_DIR" > prepare.sh
+          cat > .env.prod << ENV
+          IMAGE=$IMAGE
+          DATABASE_URL=$DATABASE_URL
+          REDIS_URL=$REDIS_URL
+          REDIS_HOST=${REDIS_HOST:-host.docker.internal}
+          REDIS_PORT=${REDIS_PORT:-6379}
+          JWT_SECRET=$JWT_SECRET
+          ENV
           cat > deploy.sh << SCRIPT
           #!/bin/bash
           set -e
-          # #region agent log
-          echo "[DEBUG] DEPLOY_DIR=$DEPLOY_DIR"
-          echo "[DEBUG] OCI_REGISTRY=$OCI_REGISTRY"
-          # #endregion
           cd "$DEPLOY_DIR"
+          mv .env.prod .env 2>/dev/null || true
           echo "$TOKEN_B64" | base64 -d | docker login "$OCI_REGISTRY" -u "$OCI_NAMESPACE/$OCI_USER" --password-stdin
           echo "Pulling image $IMAGE"
           docker pull "$IMAGE"
@@ -107,7 +115,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: "docker-compose.prod.yml"
+          source: "docker-compose.prod.yml,.env.prod"
           target: ${{ secrets.DEPLOY_PATH || '~/ubus' }}
 
       - name: Deploy via SSH

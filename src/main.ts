@@ -17,6 +17,7 @@ async function bootstrap() {
     .addTag('fleet', 'Frota (linhas e ônibus)')
     .addTag('trips', 'Viagens')
     .addTag('reservations', 'Reservas de assentos')
+    .addTag('health', 'Health check (Redis + DB, load test)')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

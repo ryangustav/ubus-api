@@ -1,0 +1,25 @@
+# Produção - Oracle Cloud
+# Postgres e Redis devem estar rodando (OCI ou externos)
+# A API usa DATABASE_URL e REDIS_URL do ambiente
+
+services:
+  api:
+    image: ${IMAGE:-ubus-api:latest}
+    container_name: ubus-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      JWT_SECRET: ${JWT_SECRET}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

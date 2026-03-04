@@ -64,6 +64,10 @@ As credenciais são salvas em `scripts/super-admin-credentials.txt`. **Guarde em
 
 Documentação interativa em **http://localhost:3001/api**
 
+## Deploy Oracle Cloud
+
+Deploy automático via GitHub Actions ao fazer push em `main`. Ver [docs/DEPLOY-OCI.md](docs/DEPLOY-OCI.md) para configuração.
+
 ## Desenvolvimento
 
 ```bash

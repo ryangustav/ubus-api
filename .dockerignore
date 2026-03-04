@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.github
+.env
+.env.*
+*.md
+scripts/super-admin-credentials.txt
+coverage
+.nyc_output
+*.log
+test
+.eslintrc*
+.prettierrc
+tsconfig*.json
+drizzle

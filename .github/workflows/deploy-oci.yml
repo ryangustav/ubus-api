@@ -1,0 +1,91 @@
+name: Deploy to Oracle Cloud
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_deploy:
+        description: 'Apenas build e push (sem deploy SSH)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get OCIR repository
+        id: ocir
+        uses: oracle-actions/get-ocir-repository@v1.3.0
+        with:
+          name: ubus-api
+          compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
+
+      - name: Log into OCIR
+        uses: oracle-actions/login-ocir@v1.3.0
+        with:
+          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.ocir.outputs.repo_path }}:${{ github.sha }}
+            ${{ steps.ocir.outputs.repo_path }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set image output
+        id: meta
+        run: echo "image=${{ steps.ocir.outputs.repo_path }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs: build-and-push
+    if: ${{ !inputs.skip_deploy }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy docker-compose to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          source: "docker-compose.prod.yml"
+          target: ${{ secrets.DEPLOY_PATH || '~/ubus' }}
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          envs: IMAGE=${{ needs.build-and-push.outputs.image }},DEPLOY_PATH=${{ secrets.DEPLOY_PATH }},OCI_REGISTRY=${{ secrets.OCI_REGION }}.ocir.io,OCI_NAMESPACE=${{ secrets.OCI_TENANCY_NAMESPACE }},OCI_USER=${{ secrets.OCI_CLI_USER }},OCI_AUTH_TOKEN=${{ secrets.OCI_AUTH_TOKEN }}
+          script: |
+            set -e
+            cd "${DEPLOY_PATH:-$HOME/ubus}"
+            echo "$OCI_AUTH_TOKEN" | docker login $OCI_REGISTRY -u $OCI_NAMESPACE/$OCI_USER --password-stdin
+            echo "Pulling image $IMAGE"
+            docker pull $IMAGE
+            export IMAGE
+            docker compose -f docker-compose.prod.yml up -d api
+            docker image prune -f

@@ -62,8 +62,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create OCI token file
-        run: printf '%s' "${{ secrets.OCI_AUTH_TOKEN }}" > .oci_token
+      - name: Prepare deploy directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          envs: DEPLOY_PATH=${{ secrets.DEPLOY_PATH }}
+          script: mkdir -p "${DEPLOY_PATH:-$HOME/ubus}"
+
+      - name: Encode OCI token
+        id: oci_token
+        env:
+          OCI_AUTH_TOKEN: ${{ secrets.OCI_AUTH_TOKEN }}
+        run: echo "b64=$(printf '%s' "$OCI_AUTH_TOKEN" | base64 | tr -d '\n')" >> $GITHUB_OUTPUT
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
@@ -72,7 +85,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: "docker-compose.prod.yml,.oci_token"
+          source: "docker-compose.prod.yml"
           target: ${{ secrets.DEPLOY_PATH || '~/ubus' }}
 
       - name: Deploy via SSH
@@ -83,15 +96,12 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           request_pty: true
-          envs: IMAGE=${{ needs.build-and-push.outputs.image }},DEPLOY_PATH=${{ secrets.DEPLOY_PATH }},OCI_REGISTRY=${{ secrets.OCI_REGION }}.ocir.io,OCI_NAMESPACE=${{ secrets.OCI_TENANCY_NAMESPACE }},OCI_USER=${{ secrets.OCI_CLI_USER }}
+          envs: IMAGE=${{ needs.build-and-push.outputs.image }},DEPLOY_PATH=${{ secrets.DEPLOY_PATH }},OCI_REGISTRY=${{ secrets.OCI_REGION }}.ocir.io,OCI_NAMESPACE=${{ secrets.OCI_TENANCY_NAMESPACE }},OCI_USER=${{ secrets.OCI_CLI_USER }},OCI_TOKEN_B64=${{ steps.oci_token.outputs.b64 }}
           script: |
             set -e
             DEPLOY_DIR="${DEPLOY_PATH:-$HOME/ubus}"
-            mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
-            if [ ! -f .oci_token ]; then echo "OCI token file not found"; exit 1; fi
-            cat .oci_token | docker login "$OCI_REGISTRY" -u "$OCI_NAMESPACE/$OCI_USER" --password-stdin
-            rm -f .oci_token
+            echo "$OCI_TOKEN_B64" | base64 -d | docker login "$OCI_REGISTRY" -u "$OCI_NAMESPACE/$OCI_USER" --password-stdin
             echo "Pulling image $IMAGE"
             docker pull "$IMAGE"
             export IMAGE

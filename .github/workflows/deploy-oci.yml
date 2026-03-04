@@ -99,9 +99,17 @@ jobs:
           envs: IMAGE=${{ needs.build-and-push.outputs.image }},DEPLOY_PATH=${{ secrets.DEPLOY_PATH }},OCI_REGISTRY=${{ secrets.OCI_REGION }}.ocir.io,OCI_NAMESPACE=${{ secrets.OCI_TENANCY_NAMESPACE }},OCI_USER=${{ secrets.OCI_CLI_USER }},OCI_TOKEN_B64=${{ steps.oci_token.outputs.b64 }}
           script: |
             set -e
+            # #region agent log
+            echo "[DEBUG] OCI_TOKEN_B64 length: ${#OCI_TOKEN_B64}"
+            echo "[DEBUG] Decoded bytes: $(echo "$OCI_TOKEN_B64" | base64 -d 2>/dev/null | wc -c)"
+            echo "[DEBUG] OCI_REGISTRY=$OCI_REGISTRY"
+            if [ -z "$OCI_TOKEN_B64" ]; then echo "[DEBUG] FAIL: OCI_TOKEN_B64 is empty"; exit 1; fi
+            # #endregion
             DEPLOY_DIR="${DEPLOY_PATH:-$HOME/ubus}"
             cd "$DEPLOY_DIR"
-            echo "$OCI_TOKEN_B64" | base64 -d | docker login "$OCI_REGISTRY" -u "$OCI_NAMESPACE/$OCI_USER" --password-stdin
+            echo "$OCI_TOKEN_B64" | base64 -d > /tmp/.oci_login_token
+            docker login "$OCI_REGISTRY" -u "$OCI_NAMESPACE/$OCI_USER" --password-stdin < /tmp/.oci_login_token
+            rm -f /tmp/.oci_login_token
             echo "Pulling image $IMAGE"
             docker pull "$IMAGE"
             export IMAGE

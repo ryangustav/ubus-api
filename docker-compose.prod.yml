@@ -8,10 +8,7 @@ services:
     image: ${IMAGE:-ubus-api:latest}
     container_name: ubus-api
     restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    expose:
-      - "3001"
+    network_mode: host
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -31,6 +28,8 @@ services:
     image: nginx:alpine
     container_name: ubus-nginx
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "80:80"
       - "443:443"

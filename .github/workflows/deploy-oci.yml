@@ -91,8 +91,8 @@ jobs:
           fi
           echo "Deploying IMAGE=$IMAGE"
           export IMAGE="$IMAGE"
-          docker compose -f docker-compose.prod.yml pull
-          docker compose -f docker-compose.prod.yml up -d --force-recreate
+          docker compose -f docker-compose.prod.yml pull --ignore-pull-failures
+          docker compose -f docker-compose.prod.yml up -d --force-recreate --pull always
           docker image prune -f
           SCRIPT
           chmod +x deploy.sh

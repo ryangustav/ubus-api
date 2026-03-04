@@ -1,5 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBody,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { TripsService } from './application/trips.service';
 import { CreateViagemDto } from './dto/create-viagem.dto';
 import { UpdateViagemDto } from './dto/update-viagem.dto';
@@ -42,7 +56,10 @@ export class TripsController {
   @ApiOperation({ summary: 'Atualizar viagem (somente gestor)' })
   @ApiParam({ name: 'idViagem' })
   @ApiBody({ type: UpdateViagemDto })
-  updateViagem(@Param('idViagem') idViagem: string, @Body() dto: UpdateViagemDto) {
+  updateViagem(
+    @Param('idViagem') idViagem: string,
+    @Body() dto: UpdateViagemDto,
+  ) {
     return this.trips.updateViagem(idViagem, dto);
   }
 }

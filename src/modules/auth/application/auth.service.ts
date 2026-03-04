@@ -134,7 +134,9 @@ export class AuthService {
 
     const u = user.user;
     if (user.prefeitura?.ativo === false) {
-      throw new UnauthorizedException('Prefeitura pausada. Contate o administrador.');
+      throw new UnauthorizedException(
+        'Prefeitura pausada. Contate o administrador.',
+      );
     }
 
     const valid = await bcrypt.compare(parsed.data.senha, u.senhaHash);
@@ -145,7 +147,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: u.id,
       email: u.email,
-      role: (u.role ?? 'ALUNO') as JwtPayload['role'],
+      role: u.role ?? 'ALUNO',
       prefeituraId: u.idPrefeitura,
     };
 

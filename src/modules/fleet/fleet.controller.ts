@@ -1,5 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBody,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { FleetService } from './application/fleet.service';
 import { CreateLinhaDto, UpdateLinhaDto } from './dto/linha.dto';
 import { CreateOnibusDto, UpdateOnibusDto } from './dto/onibus.dto';
@@ -63,7 +77,10 @@ export class FleetController {
   @Post('onibus')
   @UseGuards(RolesGuard)
   @Roles('MOTORISTA', 'GESTOR')
-  @ApiOperation({ summary: 'Criar ônibus (motorista ou gestor). Motorista: salva idMotorista.' })
+  @ApiOperation({
+    summary:
+      'Criar ônibus (motorista ou gestor). Motorista: salva idMotorista.',
+  })
   @ApiBody({ type: CreateOnibusDto })
   createOnibus(@CurrentUser() user: JwtPayload, @Body() dto: CreateOnibusDto) {
     const idMotorista = user.role === 'MOTORISTA' ? user.sub : undefined;
@@ -72,7 +89,9 @@ export class FleetController {
 
   @Patch('onibus/:id')
   @UseGuards(LiderOnibusGuard)
-  @ApiOperation({ summary: 'Atualizar ônibus (motorista, gestor ou líder da rota)' })
+  @ApiOperation({
+    summary: 'Atualizar ônibus (motorista, gestor ou líder da rota)',
+  })
   @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdateOnibusDto })
   updateOnibus(

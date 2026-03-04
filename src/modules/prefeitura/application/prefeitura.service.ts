@@ -55,16 +55,15 @@ export class PrefeituraService {
     return p;
   }
 
-  async update(
-    id: string,
-    dto: { nome?: string; ativo?: boolean },
-  ) {
+  async update(id: string, dto: { nome?: string; ativo?: boolean }) {
     const updates: Partial<typeof schema.prefeituras.$inferInsert> = {};
     if (dto.nome !== undefined) updates.nome = dto.nome;
     if (dto.ativo !== undefined) updates.ativo = dto.ativo;
 
     if (id === SISTEMA_PREFEITURA_ID) {
-      throw new ConflictException('Não é possível alterar a prefeitura Sistema');
+      throw new ConflictException(
+        'Não é possível alterar a prefeitura Sistema',
+      );
     }
 
     const [updated] = await this.db
@@ -97,7 +96,7 @@ export class PrefeituraService {
       .where(eq(schema.prefeituras.id, idPrefeitura))
       .returning();
 
-    return updated!;
+    return updated;
   }
 
   async createGestor(dto: {
@@ -109,7 +108,9 @@ export class PrefeituraService {
     telefone?: string;
   }) {
     if (dto.idPrefeitura === SISTEMA_PREFEITURA_ID) {
-      throw new ConflictException('Não é possível criar gestor na prefeitura Sistema');
+      throw new ConflictException(
+        'Não é possível criar gestor na prefeitura Sistema',
+      );
     }
 
     const [prefeitura] = await this.db
@@ -144,8 +145,10 @@ export class PrefeituraService {
         ),
       );
 
-    if (existingEmail) throw new ConflictException('Email já cadastrado nesta prefeitura');
-    if (existingCpf) throw new ConflictException('CPF já cadastrado nesta prefeitura');
+    if (existingEmail)
+      throw new ConflictException('Email já cadastrado nesta prefeitura');
+    if (existingCpf)
+      throw new ConflictException('CPF já cadastrado nesta prefeitura');
 
     const senhaHash = await bcrypt.hash(dto.senha, 10);
     const [user] = await this.db
@@ -171,7 +174,9 @@ export class PrefeituraService {
 
   async removeGestor(idPrefeitura: string) {
     if (idPrefeitura === SISTEMA_PREFEITURA_ID) {
-      throw new ConflictException('Não é possível remover gestor da prefeitura Sistema');
+      throw new ConflictException(
+        'Não é possível remover gestor da prefeitura Sistema',
+      );
     }
 
     const [updated] = await this.db

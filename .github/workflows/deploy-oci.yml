@@ -82,7 +82,9 @@ jobs:
           envs: IMAGE=${{ needs.build-and-push.outputs.image }},DEPLOY_PATH=${{ secrets.DEPLOY_PATH }},OCI_REGISTRY=${{ secrets.OCI_REGION }}.ocir.io,OCI_NAMESPACE=${{ secrets.OCI_TENANCY_NAMESPACE }},OCI_USER=${{ secrets.OCI_CLI_USER }},OCI_AUTH_TOKEN=${{ secrets.OCI_AUTH_TOKEN }}
           script: |
             set -e
-            cd "${DEPLOY_PATH:-$HOME/ubus}"
+            DEPLOY_DIR="${DEPLOY_PATH:-$HOME/ubus}"
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
             echo "$OCI_AUTH_TOKEN" | docker login $OCI_REGISTRY -u $OCI_NAMESPACE/$OCI_USER --password-stdin
             echo "Pulling image $IMAGE"
             docker pull $IMAGE

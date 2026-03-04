@@ -21,7 +21,10 @@ export class AuthController {
   @Post('login')
   @ApiOperation({ summary: 'Login' })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({ status: 200, description: 'Retorna accessToken e dados do usuário' })
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna accessToken e dados do usuário',
+  })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);

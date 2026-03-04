@@ -31,6 +31,19 @@ export class UpdateViagemDto {
   @ApiPropertyOptional({ example: ['uuid-lider1', 'uuid-lider2'] })
   lideresIds?: string[];
 
-  @ApiPropertyOptional({ enum: ['AGENDADA', 'ABERTA_PARA_RESERVA', 'EM_ANDAMENTO', 'FINALIZADA', 'CANCELADA'] })
-  status?: 'AGENDADA' | 'ABERTA_PARA_RESERVA' | 'EM_ANDAMENTO' | 'FINALIZADA' | 'CANCELADA';
+  @ApiPropertyOptional({
+    enum: [
+      'AGENDADA',
+      'ABERTA_PARA_RESERVA',
+      'EM_ANDAMENTO',
+      'FINALIZADA',
+      'CANCELADA',
+    ],
+  })
+  status?:
+    | 'AGENDADA'
+    | 'ABERTA_PARA_RESERVA'
+    | 'EM_ANDAMENTO'
+    | 'FINALIZADA'
+    | 'CANCELADA';
 }

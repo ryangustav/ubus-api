@@ -6,7 +6,13 @@ import { ConfigService } from '@nestjs/config';
 export interface JwtPayload {
   sub: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'GESTOR' | 'MOTORISTA' | 'LIDER' | 'ALUNO' | 'CARONISTA';
+  role:
+    | 'SUPER_ADMIN'
+    | 'GESTOR'
+    | 'MOTORISTA'
+    | 'LIDER'
+    | 'ALUNO'
+    | 'CARONISTA';
   prefeituraId: string;
   iat?: number;
   exp?: number;
@@ -18,11 +24,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_SECRET', 'ubus-secret-change-in-prod'),
+      secretOrKey: config.get<string>(
+        'JWT_SECRET',
+        'ubus-secret-change-in-prod',
+      ),
     });
   }
 
-  async validate(payload: JwtPayload) {
+  validate(payload: JwtPayload) {
     return payload;
   }
 }

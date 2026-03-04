@@ -23,10 +23,16 @@ export const viagens = pgTable('viagens', {
     .notNull()
     .references(() => onibus.id),
   idMotorista: uuid('id_motorista').references(() => usuarios.id),
-  lideresIds: uuid('lideres_ids').array().default(sql`'{}'`),
+  lideresIds: uuid('lideres_ids')
+    .array()
+    .default(sql`'{}'`),
   capacidadeReal: integer('capacidade_real').notNull(),
-  aberturaVotacao: timestamp('abertura_votacao', { withTimezone: true }).notNull(),
-  fechamentoVotacao: timestamp('fechamento_votacao', { withTimezone: true }).notNull(),
+  aberturaVotacao: timestamp('abertura_votacao', {
+    withTimezone: true,
+  }).notNull(),
+  fechamentoVotacao: timestamp('fechamento_votacao', {
+    withTimezone: true,
+  }).notNull(),
   status: statusViagemEnum('status').default('AGENDADA'),
   criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow(),
 });

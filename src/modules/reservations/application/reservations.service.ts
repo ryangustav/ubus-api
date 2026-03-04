@@ -1,4 +1,10 @@
-import { Injectable, Inject, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { DRIZZLE } from '../../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
@@ -84,7 +90,10 @@ export class ReservationsService {
    */
   async update(
     id: string,
-    dto: { numeroAssento?: number | null; status?: (typeof schema.reservas.$inferSelect)['status'] },
+    dto: {
+      numeroAssento?: number | null;
+      status?: (typeof schema.reservas.$inferSelect)['status'];
+    },
     idUsuario?: string,
   ) {
     const [existe] = await this.db
@@ -98,12 +107,14 @@ export class ReservationsService {
     const [reserva] = await this.db
       .update(schema.reservas)
       .set({
-        ...(dto.numeroAssento !== undefined && { numeroAssento: dto.numeroAssento }),
+        ...(dto.numeroAssento !== undefined && {
+          numeroAssento: dto.numeroAssento,
+        }),
         ...(dto.status !== undefined && { status: dto.status }),
       })
       .where(eq(schema.reservas.id, id))
       .returning();
-    return reserva!;
+    return reserva;
   }
 
   /**
@@ -122,6 +133,6 @@ export class ReservationsService {
       .delete(schema.reservas)
       .where(eq(schema.reservas.id, id))
       .returning();
-    return reserva!;
+    return reserva;
   }
 }

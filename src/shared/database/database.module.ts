@@ -13,11 +13,12 @@ export const DRIZZLE = Symbol('DRIZZLE');
       provide: DRIZZLE,
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const connectionString = config.get<string>(
-          'DATABASE_URL',
-          'postgresql://ubus:ubus@localhost:5432/ubus',
-        );
+        const connectionString: string =
+          config.get('DATABASE_URL') ??
+          'postgresql://ubus:ubus@localhost:5432/ubus';
+        /* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
         const pool = new Pool({ connectionString });
+        /* eslint-disable-next-line @typescript-eslint/no-unsafe-argument */
         return drizzle(pool, { schema });
       },
     },

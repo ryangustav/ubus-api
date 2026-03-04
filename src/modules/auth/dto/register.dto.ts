@@ -1,10 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
-  @ApiProperty({ example: 'uuid-da-prefeitura', description: 'ID da prefeitura (tenant)' })
+  @ApiProperty({
+    example: 'uuid-da-prefeitura',
+    description: 'ID da prefeitura (tenant)',
+  })
   idPrefeitura: string;
 
-  @ApiProperty({ example: '12345678901', description: 'CPF (apenas números ou formatado)' })
+  @ApiProperty({
+    example: '12345678901',
+    description: 'CPF (apenas números ou formatado)',
+  })
   cpf: string;
 
   @ApiProperty({ example: 'Maria Silva' })
@@ -25,9 +31,16 @@ export class RegisterDto {
   })
   role?: 'GESTOR' | 'MOTORISTA' | 'LIDER' | 'ALUNO' | 'CARONISTA';
 
-  @ApiPropertyOptional({ example: 1, description: '1: Titular, 2: Univ. Caronista, 3: Caronista Comum' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: '1: Titular, 2: Univ. Caronista, 3: Caronista Comum',
+  })
   nivelPrioridade?: number;
 
-  @ApiPropertyOptional({ example: 'uuid-da-linha', description: 'Apenas para ALUNO. Gestor e Motorista não têm. Aluno de uma linha pode ser caronista em outra.' })
+  @ApiPropertyOptional({
+    example: 'uuid-da-linha',
+    description:
+      'Apenas para ALUNO. Gestor e Motorista não têm. Aluno de uma linha pode ser caronista em outra.',
+  })
   idLinhaPadrao?: string;
 }

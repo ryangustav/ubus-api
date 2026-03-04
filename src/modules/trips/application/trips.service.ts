@@ -85,9 +85,12 @@ export class TripsService {
     if (dto.idLinha !== undefined) updates.idLinha = dto.idLinha;
     if (dto.idOnibus !== undefined) updates.idOnibus = dto.idOnibus;
     if (dto.idMotorista !== undefined) updates.idMotorista = dto.idMotorista;
-    if (dto.capacidadeReal !== undefined) updates.capacidadeReal = dto.capacidadeReal;
-    if (dto.aberturaVotacao !== undefined) updates.aberturaVotacao = new Date(dto.aberturaVotacao);
-    if (dto.fechamentoVotacao !== undefined) updates.fechamentoVotacao = new Date(dto.fechamentoVotacao);
+    if (dto.capacidadeReal !== undefined)
+      updates.capacidadeReal = dto.capacidadeReal;
+    if (dto.aberturaVotacao !== undefined)
+      updates.aberturaVotacao = new Date(dto.aberturaVotacao);
+    if (dto.fechamentoVotacao !== undefined)
+      updates.fechamentoVotacao = new Date(dto.fechamentoVotacao);
     if (dto.lideresIds !== undefined) updates.lideresIds = dto.lideresIds;
     if (dto.status !== undefined) updates.status = dto.status;
 

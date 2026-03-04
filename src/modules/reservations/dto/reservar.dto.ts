@@ -7,10 +7,16 @@ export class CreateReservationDto {
   @ApiPropertyOptional({ description: 'Ignorado: usa o usuário autenticado' })
   idUsuario?: string;
 
-  @ApiPropertyOptional({ example: 15, description: '1-40. Omitir = ônibus de excesso' })
+  @ApiPropertyOptional({
+    example: 15,
+    description: '1-40. Omitir = ônibus de excesso',
+  })
   numeroAssento?: number | null;
 
-  @ApiPropertyOptional({ example: false, description: 'true = caronista (pode ser cortado na guilhotina)' })
+  @ApiPropertyOptional({
+    example: false,
+    description: 'true = caronista (pode ser cortado na guilhotina)',
+  })
   isCarona?: boolean;
 }
 
@@ -18,6 +24,13 @@ export class UpdateReservationDto {
   @ApiPropertyOptional({ example: 15, description: 'Trocar assento (1-40)' })
   numeroAssento?: number | null;
 
-  @ApiPropertyOptional({ enum: ['CONFIRMADA', 'PRESENTE', 'FALTOU', 'CANCELADA_SISTEMA', 'EXCESSO'] })
-  status?: 'CONFIRMADA' | 'PRESENTE' | 'FALTOU' | 'CANCELADA_SISTEMA' | 'EXCESSO';
+  @ApiPropertyOptional({
+    enum: ['CONFIRMADA', 'PRESENTE', 'FALTOU', 'CANCELADA_SISTEMA', 'EXCESSO'],
+  })
+  status?:
+    | 'CONFIRMADA'
+    | 'PRESENTE'
+    | 'FALTOU'
+    | 'CANCELADA_SISTEMA'
+    | 'EXCESSO';
 }

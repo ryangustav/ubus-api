@@ -7,7 +7,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('UBUS API')
-    .setDescription('API do sistema de reserva de assentos em ônibus universitários')
+    .setDescription(
+      'API do sistema de reserva de assentos em ônibus universitários',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .addTag('auth', 'Autenticação e cadastro')
@@ -25,4 +27,4 @@ async function bootstrap() {
   console.log(`UBUS API running on http://localhost:${port}`);
   console.log(`Swagger: http://localhost:${port}/api`);
 }
-bootstrap();
+void bootstrap();

@@ -1,5 +1,21 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBody,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ReservationsService } from './application/reservations.service';
 import { CreateReservationDto, UpdateReservationDto } from './dto/reservar.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
@@ -17,7 +33,10 @@ export class ReservationsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Reservar vaga (somente aluno)' })
   @ApiBody({ type: CreateReservationDto })
-  create(@Req() req: { user: { sub: string } }, @Body() dto: CreateReservationDto) {
+  create(
+    @Req() req: { user: { sub: string } },
+    @Body() dto: CreateReservationDto,
+  ) {
     return this.reservations.create({ ...dto, idUsuario: req.user.sub });
   }
 
@@ -55,7 +74,11 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Atualizar assento (somente aluno)' })
   @ApiParam({ name: 'id', example: 'uuid' })
   @ApiBody({ type: UpdateReservationDto })
-  update(@Req() req: { user: { sub: string } }, @Param('id') id: string, @Body() dto: UpdateReservationDto) {
+  update(
+    @Req() req: { user: { sub: string } },
+    @Param('id') id: string,
+    @Body() dto: UpdateReservationDto,
+  ) {
     return this.reservations.update(id, dto, req.user.sub);
   }
 

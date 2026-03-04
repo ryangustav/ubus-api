@@ -72,8 +72,10 @@ export class FleetService {
     if (dto.nome !== undefined) updates.nome = dto.nome;
     if (dto.descricao !== undefined) updates.descricao = dto.descricao;
     if (dto.diasDaSemana !== undefined) updates.diasDaSemana = dto.diasDaSemana;
-    if (dto.horarioAberturaVotacao !== undefined) updates.horarioAberturaVotacao = dto.horarioAberturaVotacao;
-    if (dto.horarioFechamentoVotacao !== undefined) updates.horarioFechamentoVotacao = dto.horarioFechamentoVotacao;
+    if (dto.horarioAberturaVotacao !== undefined)
+      updates.horarioAberturaVotacao = dto.horarioAberturaVotacao;
+    if (dto.horarioFechamentoVotacao !== undefined)
+      updates.horarioFechamentoVotacao = dto.horarioFechamentoVotacao;
     if (dto.isAtivo !== undefined) updates.isAtivo = dto.isAtivo;
     const [linha] = await this.db
       .update(schema.linhas)
@@ -140,11 +142,14 @@ export class FleetService {
     },
   ) {
     const updates: Partial<typeof schema.onibus.$inferInsert> = {};
-    if (dto.numeroIdentificacao !== undefined) updates.numeroIdentificacao = dto.numeroIdentificacao;
+    if (dto.numeroIdentificacao !== undefined)
+      updates.numeroIdentificacao = dto.numeroIdentificacao;
     if (dto.placa !== undefined) updates.placa = dto.placa;
-    if (dto.capacidadePadrao !== undefined) updates.capacidadePadrao = dto.capacidadePadrao;
+    if (dto.capacidadePadrao !== undefined)
+      updates.capacidadePadrao = dto.capacidadePadrao;
     if (dto.temBanheiro !== undefined) updates.temBanheiro = dto.temBanheiro;
-    if (dto.temArCondicionado !== undefined) updates.temArCondicionado = dto.temArCondicionado;
+    if (dto.temArCondicionado !== undefined)
+      updates.temArCondicionado = dto.temArCondicionado;
     if (dto.isAtivo !== undefined) updates.isAtivo = dto.isAtivo;
     const [onibus] = await this.db
       .update(schema.onibus)

@@ -13,8 +13,11 @@ export class LiderOnibusGuard implements CanActivate {
   constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-    const user = req.user as { sub?: string; role?: string; prefeituraId?: string };
+    const req = context.switchToHttp().getRequest<{
+      user?: { sub?: string; role?: string; prefeituraId?: string };
+      params?: { id?: string };
+    }>();
+    const user = req.user;
     if (!user?.sub || !user?.prefeituraId) return false;
 
     if (user.role === 'GESTOR' || user.role === 'MOTORISTA') return true;

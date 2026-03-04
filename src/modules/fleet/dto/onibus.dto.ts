@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOnibusDto {
-  @ApiProperty({ example: '20120', description: 'Número de identificação do ônibus' })
+  @ApiProperty({
+    example: '20120',
+    description: 'Número de identificação do ônibus',
+  })
   numeroIdentificacao: string;
 
   @ApiProperty({ example: 'ABC-1234' })
@@ -33,6 +36,9 @@ export class UpdateOnibusDto {
   @ApiPropertyOptional({ example: true })
   temArCondicionado?: boolean;
 
-  @ApiPropertyOptional({ example: true, description: 'Ativo para fins de cálculo de capacidade' })
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Ativo para fins de cálculo de capacidade',
+  })
   isAtivo?: boolean;
 }

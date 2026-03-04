@@ -43,7 +43,9 @@ export class PrefeituraController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Listar prefeituras (super-admin vê todas, outros só a sua)' })
+  @ApiOperation({
+    summary: 'Listar prefeituras (super-admin vê todas, outros só a sua)',
+  })
   list(@CurrentUser() user: JwtPayload) {
     const isSuperAdmin = user.role === 'SUPER_ADMIN';
     return this.prefeitura.list({
@@ -65,7 +67,10 @@ export class PrefeituraController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SUPER_ADMIN')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Atualizar prefeitura - pausar/ativar cidade (somente super-admin)' })
+  @ApiOperation({
+    summary:
+      'Atualizar prefeitura - pausar/ativar cidade (somente super-admin)',
+  })
   @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdatePrefeituraDto })
   update(@Param('id') id: string, @Body() dto: UpdatePrefeituraDto) {
@@ -76,7 +81,9 @@ export class PrefeituraController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SUPER_ADMIN')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cadastrar gestor em uma prefeitura (somente super-admin)' })
+  @ApiOperation({
+    summary: 'Cadastrar gestor em uma prefeitura (somente super-admin)',
+  })
   @ApiBody({ type: CreateGestorDto })
   createGestor(@Body() dto: CreateGestorDto) {
     return this.prefeitura.createGestor(dto);
@@ -86,7 +93,9 @@ export class PrefeituraController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SUPER_ADMIN')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remover gestor da prefeitura (somente super-admin)' })
+  @ApiOperation({
+    summary: 'Remover gestor da prefeitura (somente super-admin)',
+  })
   @ApiParam({ name: 'id' })
   removeGestor(@Param('id') id: string) {
     return this.prefeitura.removeGestor(id);

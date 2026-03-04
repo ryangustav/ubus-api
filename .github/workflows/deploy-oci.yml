@@ -72,19 +72,23 @@ jobs:
         run: |
           if [ -n "$DEPLOY_PATH" ]; then DEPLOY_DIR="$DEPLOY_PATH"; else DEPLOY_DIR='$HOME/ubus'; fi
           echo "mkdir -p $DEPLOY_DIR" > prepare.sh
-          cat > .env.prod << ENV
-          IMAGE=$IMAGE
-          DATABASE_URL=$DATABASE_URL
-          REDIS_URL=$REDIS_URL
-          REDIS_HOST=${REDIS_HOST:-host.docker.internal}
-          REDIS_PORT=${REDIS_PORT:-6379}
-          JWT_SECRET=$JWT_SECRET
-          ENV
+          {
+            echo "IMAGE=$IMAGE"
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "REDIS_URL=$REDIS_URL"
+            echo "REDIS_HOST=host.docker.internal"
+            echo "REDIS_PORT=6379"
+            echo "JWT_SECRET=$JWT_SECRET"
+          } > .env.prod
           cat > deploy.sh << SCRIPT
           #!/bin/bash
           set -e
           cd "$DEPLOY_DIR"
           mv -f .env.prod .env 2>/dev/null || true
+          if grep -q 'github.sha' .env 2>/dev/null; then
+            echo "ERROR: .env contains unexpanded template. IMAGE must be set correctly."
+            exit 1
+          fi
           echo "Deploying IMAGE=$IMAGE"
           export IMAGE="$IMAGE"
           docker compose -f docker-compose.prod.yml pull

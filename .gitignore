@@ -40,3 +40,5 @@ drizzle/meta/
 # Credenciais sensíveis
 scripts/super-admin-credentials.txt
 .oci_token
+deploy.sh
+prepare.sh

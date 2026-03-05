@@ -3,20 +3,20 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateOnibusDto {
   @ApiProperty({
     example: '20120',
-    description: 'Número de identificação do ônibus',
+    description: 'Bus identification number',
   })
   numeroIdentificacao: string;
 
   @ApiProperty({ example: 'ABC-1234' })
   placa: string;
 
-  @ApiProperty({ example: 40, description: 'Quantidade de lugares' })
+  @ApiProperty({ example: 40, description: 'Number of seats' })
   capacidadePadrao: number;
 
-  @ApiPropertyOptional({ example: true, description: 'Tem banheiro' })
+  @ApiPropertyOptional({ example: true, description: 'Has bathroom' })
   temBanheiro?: boolean;
 
-  @ApiPropertyOptional({ example: true, description: 'Tem ar condicionado' })
+  @ApiPropertyOptional({ example: true, description: 'Has air conditioning' })
   temArCondicionado?: boolean;
 }
 
@@ -38,7 +38,7 @@ export class UpdateOnibusDto {
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Ativo para fins de cálculo de capacidade',
+    description: 'Active for capacity calculation',
   })
-  isAtivo?: boolean;
+  active?: boolean;
 }

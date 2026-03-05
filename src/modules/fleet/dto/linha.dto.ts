@@ -4,25 +4,24 @@ export class CreateLinhaDto {
   @ApiProperty({ example: 'UFS - Centro' })
   nome: string;
 
-  @ApiPropertyOptional({ example: 'Linha noturna para o campus' })
+  @ApiPropertyOptional({ example: 'Night route to campus' })
   descricao?: string;
 
   @ApiProperty({
     example: [1, 2, 3, 4, 5],
-    description:
-      'Dias da semana: 0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sab',
+    description: 'Weekdays: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat',
   })
   diasDaSemana: number[];
 
   @ApiProperty({
     example: '06:00',
-    description: 'Horário que abre votação para marcar lugares (HH:mm)',
+    description: 'Time voting opens for seat selection (HH:mm)',
   })
   horarioAberturaVotacao: string;
 
   @ApiProperty({
     example: '07:30',
-    description: 'Horário que finaliza votação para marcar lugares (HH:mm)',
+    description: 'Time voting closes for seat selection (HH:mm)',
   })
   horarioFechamentoVotacao: string;
 }
@@ -31,7 +30,7 @@ export class UpdateLinhaDto {
   @ApiPropertyOptional({ example: 'UFS - Centro' })
   nome?: string;
 
-  @ApiPropertyOptional({ example: 'Linha noturna para o campus' })
+  @ApiPropertyOptional({ example: 'Night route to campus' })
   descricao?: string;
 
   @ApiPropertyOptional({ example: [1, 2, 3, 4, 5] })
@@ -44,5 +43,5 @@ export class UpdateLinhaDto {
   horarioFechamentoVotacao?: string;
 
   @ApiPropertyOptional({ example: true })
-  isAtivo?: boolean;
+  active?: boolean;
 }

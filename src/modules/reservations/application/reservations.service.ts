@@ -8,7 +8,7 @@ import {
 import { DRIZZLE } from '../../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
-import { eq, and, isNotNull } from 'drizzle-orm';
+import { eq, and, isNotNull, gte } from 'drizzle-orm';
 
 @Injectable()
 export class ReservationsService {
@@ -29,7 +29,7 @@ export class ReservationsService {
       .from(schema.viagens)
       .where(eq(schema.viagens.idViagem, dto.idViagem));
     if (!viagem) {
-      throw new NotFoundException(`Viagem "${dto.idViagem}" não encontrada`);
+      throw new NotFoundException(`Trip "${dto.idViagem}" not found`);
     }
 
     const isExcesso = dto.numeroAssento == null;
@@ -37,7 +37,7 @@ export class ReservationsService {
       const ocupados = await this.getAssentosOcupados(dto.idViagem);
       if (ocupados.length < viagem.capacidadeReal) {
         throw new BadRequestException(
-          `Votação para excesso só abre quando capacidade está cheia (${ocupados.length}/${viagem.capacidadeReal})`,
+          `Excess voting only opens when capacity is full (${ocupados.length}/${viagem.capacidadeReal})`,
         );
       }
     }
@@ -59,8 +59,28 @@ export class ReservationsService {
       .select()
       .from(schema.reservas)
       .where(eq(schema.reservas.id, id));
-    if (!reserva) throw new NotFoundException('Reserva não encontrada');
+    if (!reserva) throw new NotFoundException('Reservation not found');
     return reserva;
+  }
+
+  async findMinhas(idUsuario: string) {
+    const rows = await this.db
+      .select({
+        reserva: schema.reservas,
+        viagem: schema.viagens,
+      })
+      .from(schema.reservas)
+      .innerJoin(
+        schema.viagens,
+        eq(schema.reservas.idViagem, schema.viagens.idViagem),
+      )
+      .where(
+        and(
+          eq(schema.reservas.idUsuario, idUsuario),
+          gte(schema.viagens.dataViagem, new Date().toISOString().slice(0, 10)),
+        ),
+      );
+    return rows;
   }
 
   async findByViagem(idViagem: string) {
@@ -102,7 +122,7 @@ export class ReservationsService {
       .where(eq(schema.reservas.id, id));
     if (!existe) throw new NotFoundException('Reserva não encontrada');
     if (idUsuario && existe.idUsuario !== idUsuario) {
-      throw new ForbiddenException('Só pode atualizar sua própria reserva');
+      throw new ForbiddenException('Can only update your own reservation');
     }
     const [reserva] = await this.db
       .update(schema.reservas)
@@ -127,7 +147,7 @@ export class ReservationsService {
       .where(eq(schema.reservas.id, id));
     if (!existe) throw new NotFoundException('Reserva não encontrada');
     if (idUsuario && existe.idUsuario !== idUsuario) {
-      throw new ForbiddenException('Só pode cancelar sua própria reserva');
+      throw new ForbiddenException('Can only cancel your own reservation');
     }
     const [reserva] = await this.db
       .delete(schema.reservas)

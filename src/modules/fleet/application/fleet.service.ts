@@ -15,7 +15,7 @@ export class FleetService {
       .where(
         and(
           eq(schema.linhas.idPrefeitura, idPrefeitura),
-          eq(schema.linhas.isAtivo, true),
+          eq(schema.linhas.active, true),
         ),
       );
   }
@@ -27,7 +27,7 @@ export class FleetService {
       .where(
         and(
           eq(schema.onibus.idPrefeitura, idPrefeitura),
-          eq(schema.onibus.isAtivo, true),
+          eq(schema.onibus.active, true),
         ),
       );
   }
@@ -65,7 +65,7 @@ export class FleetService {
       diasDaSemana?: number[];
       horarioAberturaVotacao?: string;
       horarioFechamentoVotacao?: string;
-      isAtivo?: boolean;
+      active?: boolean;
     },
   ) {
     const updates: Partial<typeof schema.linhas.$inferInsert> = {};
@@ -76,7 +76,7 @@ export class FleetService {
       updates.horarioAberturaVotacao = dto.horarioAberturaVotacao;
     if (dto.horarioFechamentoVotacao !== undefined)
       updates.horarioFechamentoVotacao = dto.horarioFechamentoVotacao;
-    if (dto.isAtivo !== undefined) updates.isAtivo = dto.isAtivo;
+    if (dto.active !== undefined) updates.active = dto.active;
     const [linha] = await this.db
       .update(schema.linhas)
       .set(updates)
@@ -87,7 +87,7 @@ export class FleetService {
         ),
       )
       .returning();
-    if (!linha) throw new NotFoundException('Linha não encontrada');
+    if (!linha) throw new NotFoundException('Route not found');
     return linha;
   }
 
@@ -138,7 +138,7 @@ export class FleetService {
       capacidadePadrao?: number;
       temBanheiro?: boolean;
       temArCondicionado?: boolean;
-      isAtivo?: boolean;
+      active?: boolean;
     },
   ) {
     const updates: Partial<typeof schema.onibus.$inferInsert> = {};
@@ -150,7 +150,7 @@ export class FleetService {
     if (dto.temBanheiro !== undefined) updates.temBanheiro = dto.temBanheiro;
     if (dto.temArCondicionado !== undefined)
       updates.temArCondicionado = dto.temArCondicionado;
-    if (dto.isAtivo !== undefined) updates.isAtivo = dto.isAtivo;
+    if (dto.active !== undefined) updates.active = dto.active;
     const [onibus] = await this.db
       .update(schema.onibus)
       .set(updates)
@@ -161,7 +161,7 @@ export class FleetService {
         ),
       )
       .returning();
-    if (!onibus) throw new NotFoundException('Ônibus não encontrado');
+    if (!onibus) throw new NotFoundException('Bus not found');
     return onibus;
   }
 }

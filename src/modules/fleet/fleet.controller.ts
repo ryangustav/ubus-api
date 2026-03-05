@@ -31,31 +31,31 @@ import type { JwtPayload } from '../auth/infrastructure/strategies/jwt.strategy'
 export class FleetController {
   constructor(private fleet: FleetService) {}
 
-  @Get('linhas')
-  @ApiOperation({ summary: 'Listar linhas/rotas da prefeitura' })
-  listLinhas(@CurrentUser() user: JwtPayload) {
-    return this.fleet.listLinhas(user.prefeituraId);
+  @Get('routes')
+  @ApiOperation({ summary: 'List routes of municipality' })
+  listRoutes(@CurrentUser() user: JwtPayload) {
+    return this.fleet.listLinhas(user.municipalityId);
   }
 
-  @Get('onibus')
-  @ApiOperation({ summary: 'Listar ônibus da prefeitura' })
-  listOnibus(@CurrentUser() user: JwtPayload) {
-    return this.fleet.listOnibus(user.prefeituraId);
+  @Get('buses')
+  @ApiOperation({ summary: 'List buses of municipality' })
+  listBuses(@CurrentUser() user: JwtPayload) {
+    return this.fleet.listOnibus(user.municipalityId);
   }
 
-  @Post('linhas')
+  @Post('routes')
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
-  @ApiOperation({ summary: 'Criar linha/rota (somente gestor)' })
+  @ApiOperation({ summary: 'Create route (manager only)' })
   @ApiBody({ type: CreateLinhaDto })
   createLinha(@CurrentUser() user: JwtPayload, @Body() dto: CreateLinhaDto) {
-    return this.fleet.createLinha(user.prefeituraId, dto);
+    return this.fleet.createLinha(user.municipalityId, dto);
   }
 
-  @Patch('linhas/:id')
+  @Patch('routes/:id')
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
-  @ApiOperation({ summary: 'Atualizar linha/rota (somente gestor)' })
+  @ApiOperation({ summary: 'Update route (manager only)' })
   @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdateLinhaDto })
   updateLinha(
@@ -63,34 +63,33 @@ export class FleetController {
     @Param('id') id: string,
     @Body() dto: UpdateLinhaDto,
   ) {
-    return this.fleet.updateLinha(user.prefeituraId, id, dto);
+    return this.fleet.updateLinha(user.municipalityId, id, dto);
   }
 
-  @Get('onibus/meus')
+  @Get('buses/mine')
   @UseGuards(RolesGuard)
   @Roles('MOTORISTA')
-  @ApiOperation({ summary: 'Listar ônibus que o motorista cadastrou' })
-  listMeusOnibus(@CurrentUser() user: JwtPayload) {
-    return this.fleet.listOnibusByMotorista(user.prefeituraId, user.sub);
+  @ApiOperation({ summary: 'List buses registered by driver' })
+  listMyBuses(@CurrentUser() user: JwtPayload) {
+    return this.fleet.listOnibusByMotorista(user.municipalityId, user.sub);
   }
 
-  @Post('onibus')
+  @Post('buses')
   @UseGuards(RolesGuard)
   @Roles('MOTORISTA', 'GESTOR')
   @ApiOperation({
-    summary:
-      'Criar ônibus (motorista ou gestor). Motorista: salva idMotorista.',
+    summary: 'Create bus (driver or manager). Driver: saves driverId.',
   })
   @ApiBody({ type: CreateOnibusDto })
   createOnibus(@CurrentUser() user: JwtPayload, @Body() dto: CreateOnibusDto) {
     const idMotorista = user.role === 'MOTORISTA' ? user.sub : undefined;
-    return this.fleet.createOnibus(user.prefeituraId, dto, idMotorista);
+    return this.fleet.createOnibus(user.municipalityId, dto, idMotorista);
   }
 
-  @Patch('onibus/:id')
+  @Patch('buses/:id')
   @UseGuards(LiderOnibusGuard)
   @ApiOperation({
-    summary: 'Atualizar ônibus (motorista, gestor ou líder da rota)',
+    summary: 'Update bus (driver, manager or route leader)',
   })
   @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdateOnibusDto })
@@ -99,6 +98,6 @@ export class FleetController {
     @Param('id') id: string,
     @Body() dto: UpdateOnibusDto,
   ) {
-    return this.fleet.updateOnibus(user.prefeituraId, id, dto);
+    return this.fleet.updateOnibus(user.municipalityId, id, dto);
   }
 }

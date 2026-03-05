@@ -14,11 +14,11 @@ export class LiderOnibusGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<{
-      user?: { sub?: string; role?: string; prefeituraId?: string };
+      user?: { sub?: string; role?: string; municipalityId?: string };
       params?: { id?: string };
     }>();
     const user = req.user;
-    if (!user?.sub || !user?.prefeituraId) return false;
+    if (!user?.sub || !user?.municipalityId) return false;
 
     if (user.role === 'GESTOR' || user.role === 'MOTORISTA') return true;
 
@@ -30,7 +30,7 @@ export class LiderOnibusGuard implements CanActivate {
       .from(schema.onibus)
       .where(eq(schema.onibus.id, idOnibus));
 
-    if (!onibus || onibus.idPrefeitura !== user.prefeituraId) return false;
+    if (!onibus || onibus.idPrefeitura !== user.municipalityId) return false;
 
     const viagens = await this.db
       .select({ lideresIds: schema.viagens.lideresIds })

@@ -31,37 +31,50 @@ export class ReservationsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ALUNO')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reservar vaga (somente aluno)' })
+  @ApiOperation({ summary: 'Reserve seat (student only)' })
   @ApiBody({ type: CreateReservationDto })
   create(
     @Req() req: { user: { sub: string } },
     @Body() dto: CreateReservationDto,
   ) {
-    return this.reservations.create({ ...dto, idUsuario: req.user.sub });
+    return this.reservations.create({
+      idViagem: dto.tripId,
+      idUsuario: req.user.sub,
+      numeroAssento: dto.seatNumber ?? undefined,
+      isCarona: dto.rideShare,
+    });
   }
 
-  @Get('viagem/:idViagem')
+  @Get('minhas')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Listar reservas da viagem' })
-  @ApiParam({ name: 'idViagem', example: '20260228-20120-M' })
-  listPorViagem(@Param('idViagem') idViagem: string) {
-    return this.reservations.findByViagem(idViagem);
+  @ApiOperation({ summary: 'List my reservations with trip details' })
+  listMinhas(@Req() req: { user: { sub: string } }) {
+    return this.reservations.findMinhas(req.user.sub);
   }
 
-  @Get('viagem/:idViagem/assentos-ocupados')
+  @Get('trip/:tripId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Assentos ocupados (para mapa)' })
-  @ApiParam({ name: 'idViagem', example: '20260228-20120-M' })
-  getAssentosOcupados(@Param('idViagem') idViagem: string) {
-    return this.reservations.getAssentosOcupados(idViagem);
+  @ApiOperation({ summary: 'List trip reservations' })
+  @ApiParam({ name: 'tripId', example: '20260228-20120-M' })
+  listByTrip(@Param('tripId') tripId: string) {
+    return this.reservations.findByViagem(tripId);
+  }
+
+  @Get('trip/:tripId/occupied-seats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Occupied seats (for map)' })
+  @ApiParam({ name: 'tripId', example: '20260228-20120-M' })
+  getOccupiedSeats(@Param('tripId') tripId: string) {
+    return this.reservations.getAssentosOcupados(tripId);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Ver reserva por ID' })
+  @ApiOperation({ summary: 'Get reservation by ID' })
   @ApiParam({ name: 'id', example: 'uuid' })
   findOne(@Param('id') id: string) {
     return this.reservations.findOne(id);
@@ -71,7 +84,7 @@ export class ReservationsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ALUNO')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Atualizar assento (somente aluno)' })
+  @ApiOperation({ summary: 'Update seat (student only)' })
   @ApiParam({ name: 'id', example: 'uuid' })
   @ApiBody({ type: UpdateReservationDto })
   update(
@@ -79,14 +92,18 @@ export class ReservationsController {
     @Param('id') id: string,
     @Body() dto: UpdateReservationDto,
   ) {
-    return this.reservations.update(id, dto, req.user.sub);
+    return this.reservations.update(
+      id,
+      { numeroAssento: dto.seatNumber, status: dto.status },
+      req.user.sub,
+    );
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ALUNO')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cancelar passagem (somente aluno)' })
+  @ApiOperation({ summary: 'Cancel reservation (student only)' })
   @ApiParam({ name: 'id', example: 'uuid' })
   remove(@Req() req: { user: { sub: string } }, @Param('id') id: string) {
     return this.reservations.remove(id, req.user.sub);

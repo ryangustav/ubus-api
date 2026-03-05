@@ -13,7 +13,7 @@ export interface JwtPayload {
     | 'LIDER'
     | 'ALUNO'
     | 'CARONISTA';
-  prefeituraId: string;
+  municipalityId: string;
   iat?: number;
   exp?: number;
 }

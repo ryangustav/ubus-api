@@ -32,7 +32,7 @@ export const linhas = pgTable(
     })
       .notNull()
       .default('07:30'),
-    isAtivo: boolean('is_ativo').default(true),
+    active: boolean('is_ativo').default(true),
     criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow(),
   },
   (table) => [
@@ -58,8 +58,8 @@ export const onibus = pgTable(
     capacidadePadrao: integer('capacidade_padrao').notNull(),
     temBanheiro: boolean('tem_banheiro').default(false),
     temArCondicionado: boolean('tem_ar_condicionado').default(false),
-    /** Ativo para fins de cálculo de capacidade */
-    isAtivo: boolean('is_ativo').default(true),
+    /** Active for capacity calculation */
+    active: boolean('is_ativo').default(true),
     criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow(),
   },
   (table) => [

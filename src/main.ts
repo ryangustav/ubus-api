@@ -8,15 +8,15 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('UBUS API')
     .setDescription(
-      'API do sistema de reserva de assentos em ônibus universitários',
+      'University bus seat reservation system API',
     )
     .setVersion('1.0')
     .addBearerAuth()
-    .addTag('auth', 'Autenticação e cadastro')
-    .addTag('prefeitura', 'Prefeituras (multi-tenant)')
-    .addTag('fleet', 'Frota (linhas e ônibus)')
-    .addTag('trips', 'Viagens')
-    .addTag('reservations', 'Reservas de assentos')
+    .addTag('auth', 'Authentication and registration')
+    .addTag('management', 'Management (multi-tenant)')
+    .addTag('fleet', 'Fleet (routes and buses)')
+    .addTag('trips', 'Trips')
+    .addTag('reservations', 'Seat reservations')
     .addTag('health', 'Health check (Redis + DB, load test)')
     .build();
 

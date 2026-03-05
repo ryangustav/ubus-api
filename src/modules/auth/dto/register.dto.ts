@@ -2,28 +2,28 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
   @ApiProperty({
-    example: 'uuid-da-prefeitura',
-    description: 'ID da prefeitura (tenant)',
+    example: 'uuid-of-municipality',
+    description: 'Municipality ID (tenant)',
   })
-  idPrefeitura: string;
+  municipalityId: string;
 
   @ApiProperty({
     example: '12345678901',
-    description: 'CPF (apenas números ou formatado)',
+    description: 'CPF (numbers only or formatted)',
   })
   cpf: string;
 
   @ApiProperty({ example: 'Maria Silva' })
-  nome: string;
+  name: string;
 
   @ApiProperty({ example: 'maria@email.com' })
   email: string;
 
-  @ApiProperty({ example: 'senha123', minLength: 6 })
-  senha: string;
+  @ApiProperty({ example: 'password123', minLength: 6 })
+  password: string;
 
   @ApiPropertyOptional({ example: '11999999999' })
-  telefone?: string;
+  phone?: string;
 
   @ApiPropertyOptional({
     enum: ['GESTOR', 'MOTORISTA', 'LIDER', 'ALUNO', 'CARONISTA'],
@@ -35,12 +35,12 @@ export class RegisterDto {
     example: 1,
     description: '1: Titular, 2: Univ. Caronista, 3: Caronista Comum',
   })
-  nivelPrioridade?: number;
+  priorityLevel?: number;
 
   @ApiPropertyOptional({
-    example: 'uuid-da-linha',
+    example: 'uuid-of-route',
     description:
-      'Apenas para ALUNO. Gestor e Motorista não têm. Aluno de uma linha pode ser caronista em outra.',
+      'For ALUNO only. Manager and Driver do not have. Student of one route can be ride-share on another.',
   })
-  idLinhaPadrao?: string;
+  defaultRouteId?: string;
 }

@@ -7,10 +7,22 @@ import { InjectRedis } from '@nestjs-modules/ioredis';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type Redis from 'ioredis';
-import { Viagem, ViagemDocument } from '../../../shared/database/schema/trip.schema';
-import { Usuario, UsuarioDocument } from '../../../shared/database/schema/user.schema';
-import { Linha, LinhaDocument } from '../../../shared/database/schema/fleet.schema';
-import { Reserva, ReservaDocument } from '../../../shared/database/schema/reservation.schema';
+import {
+  Viagem,
+  ViagemDocument,
+} from '../../../shared/database/schema/trip.schema';
+import {
+  Usuario,
+  UsuarioDocument,
+} from '../../../shared/database/schema/user.schema';
+import {
+  Linha,
+  LinhaDocument,
+} from '../../../shared/database/schema/fleet.schema';
+import {
+  Reserva,
+  ReservaDocument,
+} from '../../../shared/database/schema/reservation.schema';
 
 const TRIP_LOCATION_PREFIX = 'trip:location:';
 const TRIP_ALERTA_PREFIX = 'trip:alerta:';
@@ -61,11 +73,13 @@ export class TripsService {
 
   async listViagensAbertas() {
     const now = new Date();
-    return this.viagemModel.find({
-      status: 'ABERTA_PARA_RESERVA',
-      aberturaVotacao: { $lte: now },
-      fechamentoVotacao: { $gte: now },
-    }).exec();
+    return this.viagemModel
+      .find({
+        status: 'ABERTA_PARA_RESERVA',
+        aberturaVotacao: { $lte: now },
+        fechamentoVotacao: { $gte: now },
+      })
+      .exec();
   }
 
   async updateViagem(
@@ -85,24 +99,26 @@ export class TripsService {
     }>,
   ) {
     const updates: Record<string, unknown> = {};
-    if (dto.dataViagem !== undefined) updates.dataViagem = new Date(dto.dataViagem);
+    if (dto.dataViagem !== undefined)
+      updates.dataViagem = new Date(dto.dataViagem);
     if (dto.turno !== undefined) updates.turno = dto.turno;
     if (dto.direcao !== undefined) updates.direcao = dto.direcao;
     if (dto.idLinha !== undefined) updates.idLinha = dto.idLinha;
     if (dto.idOnibus !== undefined) updates.idOnibus = dto.idOnibus;
     if (dto.idMotorista !== undefined) updates.idMotorista = dto.idMotorista;
-    if (dto.capacidadeReal !== undefined) updates.capacidadeReal = dto.capacidadeReal;
-    if (dto.aberturaVotacao !== undefined) updates.aberturaVotacao = new Date(dto.aberturaVotacao);
-    if (dto.fechamentoVotacao !== undefined) updates.fechamentoVotacao = new Date(dto.fechamentoVotacao);
+    if (dto.capacidadeReal !== undefined)
+      updates.capacidadeReal = dto.capacidadeReal;
+    if (dto.aberturaVotacao !== undefined)
+      updates.aberturaVotacao = new Date(dto.aberturaVotacao);
+    if (dto.fechamentoVotacao !== undefined)
+      updates.fechamentoVotacao = new Date(dto.fechamentoVotacao);
     if (dto.lideresIds !== undefined) updates.lideresIds = dto.lideresIds;
     if (dto.status !== undefined) updates.status = dto.status;
 
-    const viagem = await this.viagemModel.findOneAndUpdate(
-      { idViagem },
-      { $set: updates },
-      { new: true }
-    ).exec();
-    
+    const viagem = await this.viagemModel
+      .findOneAndUpdate({ idViagem }, { $set: updates }, { new: true })
+      .exec();
+
     if (!viagem) throw new NotFoundException('Trip not found');
     return viagem;
   }
@@ -115,8 +131,11 @@ export class TripsService {
     const viagem = await this.viagemModel.findOne({ idViagem }).exec();
     if (!viagem) throw new NotFoundException('Trip not found');
 
-    const isLeader = Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
-    const motorista = viagem.idMotorista ? await this.usuarioModel.findById(viagem.idMotorista).exec() : null;
+    const isLeader =
+      Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
+    const motorista = viagem.idMotorista
+      ? await this.usuarioModel.findById(viagem.idMotorista).exec()
+      : null;
     const isMotorista = motorista?.id === userId;
 
     const linha = await this.linhaModel.findById(viagem.idLinha).exec();
@@ -141,9 +160,10 @@ export class TripsService {
     const viagem = await this.viagemModel.findOne({ idViagem }).exec();
     if (!viagem) throw new NotFoundException('Trip not found');
 
-    const isLeader = Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
+    const isLeader =
+      Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
     const linha = await this.linhaModel.findById(viagem.idLinha).exec();
-    
+
     if (linha?.idPrefeitura !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
@@ -186,10 +206,15 @@ export class TripsService {
     const viagemOrigem = await this.viagemModel.findOne({ idViagem }).exec();
     if (!viagemOrigem) throw new NotFoundException('Origin trip not found');
 
-    const viagemDestino = await this.viagemModel.findOne({ idViagem: tripIdDestino }).exec();
-    if (!viagemDestino) throw new NotFoundException('Destination trip not found');
+    const viagemDestino = await this.viagemModel
+      .findOne({ idViagem: tripIdDestino })
+      .exec();
+    if (!viagemDestino)
+      throw new NotFoundException('Destination trip not found');
 
-    const isLeader = Array.isArray(viagemOrigem.lideresIds) && viagemOrigem.lideresIds.includes(userId);
+    const isLeader =
+      Array.isArray(viagemOrigem.lideresIds) &&
+      viagemOrigem.lideresIds.includes(userId);
     const linha = await this.linhaModel.findById(viagemOrigem.idLinha).exec();
 
     if (linha?.idPrefeitura !== municipalityId) {
@@ -200,10 +225,14 @@ export class TripsService {
     }
 
     const reservas = await this.reservaModel.find({ idViagem }).exec();
-    const ocupadosDestino = await this.reservaModel.find({ idViagem: tripIdDestino }).exec();
+    const ocupadosDestino = await this.reservaModel
+      .find({ idViagem: tripIdDestino })
+      .exec();
 
     const ocupadosSet = new Set(
-      ocupadosDestino.map((o) => o.numeroAssento).filter((n): n is number => n != null),
+      ocupadosDestino
+        .map((o) => o.numeroAssento)
+        .filter((n): n is number => n != null),
     );
 
     let seat = 1;
@@ -237,8 +266,9 @@ export class TripsService {
     if (!viagem) throw new NotFoundException('Trip not found');
 
     const isMotorista = viagem.idMotorista === userId;
-    const isLeader = Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
-    
+    const isLeader =
+      Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
+
     const linha = await this.linhaModel.findById(viagem.idLinha).exec();
     if (linha?.idPrefeitura !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');

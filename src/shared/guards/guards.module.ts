@@ -8,10 +8,12 @@ import { Viagem, ViagemSchema } from '../database/schema/trip.schema';
 
 @Global()
 @Module({
-  imports: [MongooseModule.forFeature([
-    { name: Onibus.name, schema: OnibusSchema },
-    { name: Viagem.name, schema: ViagemSchema },
-  ])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Onibus.name, schema: OnibusSchema },
+      { name: Viagem.name, schema: ViagemSchema },
+    ]),
+  ],
   providers: [JwtAuthGuard, RolesGuard, LiderOnibusGuard],
   exports: [JwtAuthGuard, RolesGuard, LiderOnibusGuard],
 })

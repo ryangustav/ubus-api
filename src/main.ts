@@ -7,9 +7,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('UBUS API')
-    .setDescription(
-      'University bus seat reservation system API',
-    )
+    .setDescription('University bus seat reservation system API')
     .setVersion('1.0')
     .addBearerAuth()
     .addTag('auth', 'Authentication and registration')

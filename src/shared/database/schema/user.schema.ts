@@ -5,7 +5,10 @@ import { roleUsuarioEnum, statusCadastroEnum } from './enums';
 
 export type UsuarioDocument = Usuario & Document;
 
-@Schema({ timestamps: { createdAt: 'criadoEm', updatedAt: false }, collection: 'usuarios' })
+@Schema({
+  timestamps: { createdAt: 'criadoEm', updatedAt: false },
+  collection: 'usuarios',
+})
 export class Usuario {
   @Prop({ type: String, default: () => randomUUID() })
   _id: string;

@@ -6,8 +6,14 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Reserva, ReservaDocument } from '../../../shared/database/schema/reservation.schema';
-import { Viagem, ViagemDocument } from '../../../shared/database/schema/trip.schema';
+import {
+  Reserva,
+  ReservaDocument,
+} from '../../../shared/database/schema/reservation.schema';
+import {
+  Viagem,
+  ViagemDocument,
+} from '../../../shared/database/schema/trip.schema';
 
 @Injectable()
 export class ReservationsService {
@@ -22,7 +28,9 @@ export class ReservationsService {
     numeroAssento?: number | null;
     isCarona?: boolean;
   }) {
-    const viagem = await this.viagemModel.findOne({ idViagem: dto.idViagem }).exec();
+    const viagem = await this.viagemModel
+      .findOne({ idViagem: dto.idViagem })
+      .exec();
     if (!viagem) {
       throw new NotFoundException(`Trip "${dto.idViagem}" not found`);
     }
@@ -58,10 +66,12 @@ export class ReservationsService {
     const today = new Date().toISOString().slice(0, 10);
 
     for (const r of reservas) {
-      const v = await this.viagemModel.findOne({
-        idViagem: r.idViagem,
-        dataViagem: { $gte: new Date(today) }
-      }).exec();
+      const v = await this.viagemModel
+        .findOne({
+          idViagem: r.idViagem,
+          dataViagem: { $gte: new Date(today) },
+        })
+        .exec();
       if (v) {
         result.push({ reserva: r, viagem: v });
       }
@@ -74,11 +84,13 @@ export class ReservationsService {
   }
 
   async getAssentosOcupados(idViagem: string): Promise<number[]> {
-    const reservas = await this.reservaModel.find({
-      idViagem,
-      numeroAssento: { $exists: true, $ne: null }
-    }).exec();
-    
+    const reservas = await this.reservaModel
+      .find({
+        idViagem,
+        numeroAssento: { $exists: true, $ne: null },
+      })
+      .exec();
+
     return reservas
       .map((r) => r.numeroAssento)
       .filter((n): n is number => n != null);
@@ -94,14 +106,15 @@ export class ReservationsService {
   ) {
     const existe = await this.reservaModel.findById(id).exec();
     if (!existe) throw new NotFoundException('Reserva não encontrada');
-    
+
     if (idUsuario && existe.idUsuario !== idUsuario) {
       throw new ForbiddenException('Can only update your own reservation');
     }
 
-    if (dto.numeroAssento !== undefined) existe.numeroAssento = dto.numeroAssento ?? undefined;
+    if (dto.numeroAssento !== undefined)
+      existe.numeroAssento = dto.numeroAssento ?? undefined;
     if (dto.status !== undefined) existe.status = dto.status;
-    
+
     await existe.save();
     return existe;
   }
@@ -109,11 +122,11 @@ export class ReservationsService {
   async remove(id: string, idUsuario?: string) {
     const existe = await this.reservaModel.findById(id).exec();
     if (!existe) throw new NotFoundException('Reserva não encontrada');
-    
+
     if (idUsuario && existe.idUsuario !== idUsuario) {
       throw new ForbiddenException('Can only cancel your own reservation');
     }
-    
+
     await this.reservaModel.findByIdAndDelete(id).exec();
     return existe;
   }

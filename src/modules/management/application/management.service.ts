@@ -6,8 +6,14 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { Prefeitura, PrefeituraDocument } from '../../../shared/database/schema/prefeitura.schema';
-import { Usuario, UsuarioDocument } from '../../../shared/database/schema/user.schema';
+import {
+  Prefeitura,
+  PrefeituraDocument,
+} from '../../../shared/database/schema/prefeitura.schema';
+import {
+  Usuario,
+  UsuarioDocument,
+} from '../../../shared/database/schema/user.schema';
 
 const SYSTEM_MUNICIPALITY_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -18,7 +24,8 @@ function normalizeCpf(cpf: string): string {
 @Injectable()
 export class ManagementService {
   constructor(
-    @InjectModel(Prefeitura.name) private prefeituraModel: Model<PrefeituraDocument>,
+    @InjectModel(Prefeitura.name)
+    private prefeituraModel: Model<PrefeituraDocument>,
     @InjectModel(Usuario.name) private usuarioModel: Model<UsuarioDocument>,
   ) {}
 
@@ -27,10 +34,7 @@ export class ManagementService {
     return prefeitura.save();
   }
 
-  async list(opts?: {
-    excludeSystem?: boolean;
-    municipalityId?: string;
-  }) {
+  async list(opts?: { excludeSystem?: boolean; municipalityId?: string }) {
     const excludeSystem = opts?.excludeSystem ?? true;
     const municipalityId = opts?.municipalityId;
 
@@ -56,11 +60,9 @@ export class ManagementService {
       throw new ConflictException('Cannot modify System municipality');
     }
 
-    const updated = await this.prefeituraModel.findByIdAndUpdate(
-      id,
-      { $set: updates },
-      { new: true }
-    ).exec();
+    const updated = await this.prefeituraModel
+      .findByIdAndUpdate(id, { $set: updates }, { new: true })
+      .exec();
 
     if (!updated) throw new NotFoundException('Municipality not found');
     return updated;
@@ -95,7 +97,9 @@ export class ManagementService {
       );
     }
 
-    const municipality = await this.prefeituraModel.findById(dto.municipalityId).exec();
+    const municipality = await this.prefeituraModel
+      .findById(dto.municipalityId)
+      .exec();
 
     if (!municipality) throw new NotFoundException('Municipality not found');
     if (municipality.idGestor) {
@@ -104,20 +108,28 @@ export class ManagementService {
 
     const cpfNorm = normalizeCpf(dto.cpf);
 
-    const existingEmail = await this.usuarioModel.findOne({
-      email: dto.email,
-      idPrefeitura: dto.municipalityId,
-    }).exec();
+    const existingEmail = await this.usuarioModel
+      .findOne({
+        email: dto.email,
+        idPrefeitura: dto.municipalityId,
+      })
+      .exec();
 
-    const existingCpf = await this.usuarioModel.findOne({
-      cpf: cpfNorm,
-      idPrefeitura: dto.municipalityId,
-    }).exec();
+    const existingCpf = await this.usuarioModel
+      .findOne({
+        cpf: cpfNorm,
+        idPrefeitura: dto.municipalityId,
+      })
+      .exec();
 
     if (existingEmail)
-      throw new ConflictException('Email already registered in this municipality');
+      throw new ConflictException(
+        'Email already registered in this municipality',
+      );
     if (existingCpf)
-      throw new ConflictException('CPF already registered in this municipality');
+      throw new ConflictException(
+        'CPF already registered in this municipality',
+      );
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = new this.usuarioModel({
@@ -145,11 +157,13 @@ export class ManagementService {
       );
     }
 
-    const updated = await this.prefeituraModel.findByIdAndUpdate(
-      municipalityId,
-      { $unset: { idGestor: "" } },
-      { new: true }
-    ).exec();
+    const updated = await this.prefeituraModel
+      .findByIdAndUpdate(
+        municipalityId,
+        { $unset: { idGestor: '' } },
+        { new: true },
+      )
+      .exec();
 
     if (!updated) throw new NotFoundException('Municipality not found');
     return updated;

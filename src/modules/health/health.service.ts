@@ -3,7 +3,10 @@ import { InjectRedis } from '@nestjs-modules/ioredis';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type Redis from 'ioredis';
-import { Prefeitura, PrefeituraDocument } from '../../shared/database/schema/prefeitura.schema';
+import {
+  Prefeitura,
+  PrefeituraDocument,
+} from '../../shared/database/schema/prefeitura.schema';
 import type { HealthQueryDto } from './health.dto';
 
 export interface HealthResult {
@@ -23,7 +26,8 @@ export interface HealthResult {
 export class HealthService {
   constructor(
     @InjectRedis() private readonly redis: Redis,
-    @InjectModel(Prefeitura.name) private readonly prefeituraModel: Model<PrefeituraDocument>,
+    @InjectModel(Prefeitura.name)
+    private readonly prefeituraModel: Model<PrefeituraDocument>,
   ) {}
 
   async check(query?: HealthQueryDto): Promise<HealthResult> {
@@ -85,8 +89,7 @@ export class HealthService {
         iterations,
         totalRedisMs: result.redis.latencyMs ?? 0,
         totalDbMs: result.db.latencyMs ?? 0,
-        totalMs:
-          (result.redis.latencyMs ?? 0) + (result.db.latencyMs ?? 0),
+        totalMs: (result.redis.latencyMs ?? 0) + (result.db.latencyMs ?? 0),
       };
     }
 

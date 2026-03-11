@@ -4,7 +4,10 @@ import { direcaoViagemEnum, statusViagemEnum } from './enums';
 
 export type ViagemDocument = Viagem & Document;
 
-@Schema({ timestamps: { createdAt: 'criadoEm', updatedAt: false }, collection: 'viagens' })
+@Schema({
+  timestamps: { createdAt: 'criadoEm', updatedAt: false },
+  collection: 'viagens',
+})
 export class Viagem {
   @Prop({ type: String, unique: true, required: true })
   idViagem: string;

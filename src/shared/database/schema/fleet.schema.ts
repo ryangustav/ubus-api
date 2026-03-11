@@ -4,7 +4,10 @@ import { randomUUID } from 'crypto';
 
 export type LinhaDocument = Linha & Document;
 
-@Schema({ timestamps: { createdAt: 'criadoEm', updatedAt: false }, collection: 'linhas' })
+@Schema({
+  timestamps: { createdAt: 'criadoEm', updatedAt: false },
+  collection: 'linhas',
+})
 export class Linha {
   @Prop({ type: String, default: () => randomUUID() })
   _id: string;
@@ -38,7 +41,10 @@ LinhaSchema.index({ idPrefeitura: 1, nome: 1 }, { unique: true });
 
 export type OnibusDocument = Onibus & Document;
 
-@Schema({ timestamps: { createdAt: 'criadoEm', updatedAt: false }, collection: 'onibus' })
+@Schema({
+  timestamps: { createdAt: 'criadoEm', updatedAt: false },
+  collection: 'onibus',
+})
 export class Onibus {
   @Prop({ type: String, default: () => randomUUID() })
   _id: string;
@@ -71,5 +77,8 @@ export class Onibus {
 }
 
 export const OnibusSchema = SchemaFactory.createForClass(Onibus);
-OnibusSchema.index({ idPrefeitura: 1, numeroIdentificacao: 1 }, { unique: true });
+OnibusSchema.index(
+  { idPrefeitura: 1, numeroIdentificacao: 1 },
+  { unique: true },
+);
 OnibusSchema.index({ idPrefeitura: 1, placa: 1 }, { unique: true });

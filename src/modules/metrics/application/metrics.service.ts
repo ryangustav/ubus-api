@@ -1,10 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Usuario, UsuarioDocument } from '../../../shared/database/schema/user.schema';
-import { Viagem, ViagemDocument } from '../../../shared/database/schema/trip.schema';
-import { Linha, LinhaDocument } from '../../../shared/database/schema/fleet.schema';
-import { Onibus, OnibusDocument } from '../../../shared/database/schema/fleet.schema';
+import {
+  Usuario,
+  UsuarioDocument,
+} from '../../../shared/database/schema/user.schema';
+import {
+  Viagem,
+  ViagemDocument,
+} from '../../../shared/database/schema/trip.schema';
+import {
+  Linha,
+  LinhaDocument,
+} from '../../../shared/database/schema/fleet.schema';
+import {
+  Onibus,
+  OnibusDocument,
+} from '../../../shared/database/schema/fleet.schema';
 
 @Injectable()
 export class MetricsService {
@@ -18,29 +30,43 @@ export class MetricsService {
   async getDashboard(municipalityId: string) {
     const today = new Date().toISOString().slice(0, 10);
 
-    const activeStudents = await this.usuarioModel.countDocuments({
-      idPrefeitura: municipalityId,
-      role: 'ALUNO',
-      statusCadastro: 'APROVADO',
-    }).exec();
+    const activeStudents = await this.usuarioModel
+      .countDocuments({
+        idPrefeitura: municipalityId,
+        role: 'ALUNO',
+        statusCadastro: 'APROVADO',
+      })
+      .exec();
 
-    const linhas = await this.linhaModel.find({ idPrefeitura: municipalityId }).select('_id').exec();
-    const linhasIds = linhas.map(l => l.id);
+    const linhas = await this.linhaModel
+      .find({ idPrefeitura: municipalityId })
+      .select('_id')
+      .exec();
+    const linhasIds = linhas.map((l) => l.id);
 
-    const tripsToday = await this.viagemModel.countDocuments({
-      idLinha: { $in: linhasIds },
-      dataViagem: { $gte: new Date(today), $lt: new Date(new Date(today).getTime() + 86400000) }
-    }).exec();
+    const tripsToday = await this.viagemModel
+      .countDocuments({
+        idLinha: { $in: linhasIds },
+        dataViagem: {
+          $gte: new Date(today),
+          $lt: new Date(new Date(today).getTime() + 86400000),
+        },
+      })
+      .exec();
 
-    const pendingCount = await this.usuarioModel.countDocuments({
-      idPrefeitura: municipalityId,
-      statusCadastro: 'PENDENTE',
-    }).exec();
+    const pendingCount = await this.usuarioModel
+      .countDocuments({
+        idPrefeitura: municipalityId,
+        statusCadastro: 'PENDENTE',
+      })
+      .exec();
 
-    const fleetActive = await this.onibusModel.countDocuments({
-      idPrefeitura: municipalityId,
-      active: true,
-    }).exec();
+    const fleetActive = await this.onibusModel
+      .countDocuments({
+        idPrefeitura: municipalityId,
+        active: true,
+      })
+      .exec();
 
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -49,31 +75,36 @@ export class MetricsService {
     weekEnd.setDate(weekEnd.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
 
-    const weeklyTripsRaw = await this.viagemModel.aggregate([
-      { 
-        $match: {
-          idLinha: { $in: linhasIds },
-          dataViagem: { $gte: weekStart, $lte: weekEnd }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$dataViagem" }
+    const weeklyTripsRaw = await this.viagemModel
+      .aggregate([
+        {
+          $match: {
+            idLinha: { $in: linhasIds },
+            dataViagem: { $gte: weekStart, $lte: weekEnd },
           },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          date: "$_id",
-          count: 1
-        }
-      }
-    ]).exec();
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$dataViagem' },
+            },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            date: '$_id',
+            count: 1,
+          },
+        },
+      ])
+      .exec();
 
-    const weeklyTrips = weeklyTripsRaw.map((v) => ({ date: v.date, count: v.count }));
+    const weeklyTrips = weeklyTripsRaw.map((v) => ({
+      date: v.date,
+      count: v.count,
+    }));
 
     return {
       activeStudents,

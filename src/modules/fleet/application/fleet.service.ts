@@ -1,7 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Linha, LinhaDocument, Onibus, OnibusDocument } from '../../../shared/database/schema/fleet.schema';
+import {
+  Linha,
+  LinhaDocument,
+  Onibus,
+  OnibusDocument,
+} from '../../../shared/database/schema/fleet.schema';
 
 @Injectable()
 export class FleetService {
@@ -51,11 +56,9 @@ export class FleetService {
       active?: boolean;
     },
   ) {
-    const linha = await this.linhaModel.findOneAndUpdate(
-      { _id: id, idPrefeitura },
-      { $set: dto },
-      { new: true }
-    ).exec();
+    const linha = await this.linhaModel
+      .findOneAndUpdate({ _id: id, idPrefeitura }, { $set: dto }, { new: true })
+      .exec();
 
     if (!linha) throw new NotFoundException('Route not found');
     return linha;
@@ -100,12 +103,10 @@ export class FleetService {
       active?: boolean;
     },
   ) {
-    const onibus = await this.onibusModel.findOneAndUpdate(
-      { _id: id, idPrefeitura },
-      { $set: dto },
-      { new: true }
-    ).exec();
-    
+    const onibus = await this.onibusModel
+      .findOneAndUpdate({ _id: id, idPrefeitura }, { $set: dto }, { new: true })
+      .exec();
+
     if (!onibus) throw new NotFoundException('Bus not found');
     return onibus;
   }

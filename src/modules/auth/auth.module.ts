@@ -6,8 +6,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthController } from './auth.controller';
 import { AuthService } from './application/auth.service';
 import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
-import { Usuario, UsuarioSchema } from '../../shared/database/schema/user.schema';
-import { Prefeitura, PrefeituraSchema } from '../../shared/database/schema/prefeitura.schema';
+import {
+  Usuario,
+  UsuarioSchema,
+} from '../../shared/database/schema/user.schema';
+import {
+  Prefeitura,
+  PrefeituraSchema,
+} from '../../shared/database/schema/prefeitura.schema';
 
 @Module({
   imports: [

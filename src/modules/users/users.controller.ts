@@ -39,7 +39,14 @@ export class UsersController {
   @Roles('GESTOR', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Approve or reject user registration' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', enum: ['APROVADO', 'REJEITADO'] } } } })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['APROVADO', 'REJEITADO'] },
+      },
+    },
+  })
   updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateStatusDto,

@@ -5,18 +5,25 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Usuario, UsuarioDocument } from '../../../shared/database/schema/user.schema';
+import {
+  Usuario,
+  UsuarioDocument,
+} from '../../../shared/database/schema/user.schema';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(Usuario.name) private userModel: Model<UsuarioDocument>) {}
+  constructor(
+    @InjectModel(Usuario.name) private userModel: Model<UsuarioDocument>,
+  ) {}
 
   async listPendentes(municipalityId: string) {
-    return this.userModel.find({
-      idPrefeitura: municipalityId,
-      statusCadastro: 'PENDENTE',
-      role: 'ALUNO',
-    }).exec();
+    return this.userModel
+      .find({
+        idPrefeitura: municipalityId,
+        statusCadastro: 'PENDENTE',
+        role: 'ALUNO',
+      })
+      .exec();
   }
 
   async updateStatus(

@@ -4,7 +4,10 @@ import { randomUUID } from 'crypto';
 
 export type PrefeituraDocument = Prefeitura & Document;
 
-@Schema({ timestamps: { createdAt: 'criadoEm', updatedAt: false }, collection: 'prefeituras' })
+@Schema({
+  timestamps: { createdAt: 'criadoEm', updatedAt: false },
+  collection: 'prefeituras',
+})
 export class Prefeitura {
   @Prop({ type: String, default: () => randomUUID() })
   _id: string;

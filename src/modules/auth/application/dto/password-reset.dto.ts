@@ -5,4 +5,6 @@ export const passwordRedefinitionSchema = z.object({
   password: z.string().min(6, 'Password must have at least 6 characters'),
 });
 
-export type PasswordRedefinitionDto = z.infer<typeof passwordRedefinitionSchema>;
+export type PasswordRedefinitionDto = z.infer<
+  typeof passwordRedefinitionSchema
+>;

@@ -5,7 +5,10 @@ import { statusReservaEnum } from './enums';
 
 export type ReservaDocument = Reserva & Document;
 
-@Schema({ timestamps: { createdAt: 'criadoEm', updatedAt: false }, collection: 'reservas' })
+@Schema({
+  timestamps: { createdAt: 'criadoEm', updatedAt: false },
+  collection: 'reservas',
+})
 export class Reserva {
   @Prop({ type: String, default: () => randomUUID() })
   _id: string;
@@ -33,5 +36,8 @@ export const ReservaSchema = SchemaFactory.createForClass(Reserva);
 // Mongoose partial index approach for sparse unique index.
 ReservaSchema.index(
   { idViagem: 1, numeroAssento: 1 },
-  { unique: true, partialFilterExpression: { numeroAssento: { $type: 'number' } } },
+  {
+    unique: true,
+    partialFilterExpression: { numeroAssento: { $type: 'number' } },
+  },
 );

@@ -19,9 +19,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev --legacy-peer-deps
 
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/drizzle.config.js ./
 
 EXPOSE 3001
 
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]

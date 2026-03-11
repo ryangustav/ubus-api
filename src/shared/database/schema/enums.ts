@@ -1,34 +1,28 @@
-import { pgEnum } from 'drizzle-orm/pg-core';
-
-export const roleUsuarioEnum = pgEnum('role_usuario', [
+export const roleUsuarioEnum = [
   'SUPER_ADMIN',
   'GESTOR',
   'MOTORISTA',
   'LIDER',
   'ALUNO',
   'CARONISTA',
-]);
+];
 
-export const statusCadastroEnum = pgEnum('status_cadastro', [
-  'PENDENTE',
-  'APROVADO',
-  'REJEITADO',
-]);
+export const statusCadastroEnum = ['PENDENTE', 'APROVADO', 'REJEITADO'];
 
-export const direcaoViagemEnum = pgEnum('direcao_viagem', ['IDA', 'VOLTA']);
+export const direcaoViagemEnum = ['IDA', 'VOLTA'];
 
-export const statusViagemEnum = pgEnum('status_viagem', [
+export const statusViagemEnum = [
   'AGENDADA',
   'ABERTA_PARA_RESERVA',
   'EM_ANDAMENTO',
   'FINALIZADA',
   'CANCELADA',
-]);
+];
 
-export const statusReservaEnum = pgEnum('status_reserva', [
+export const statusReservaEnum = [
   'CONFIRMADA',
   'PRESENTE',
   'FALTOU',
   'CANCELADA_SISTEMA',
   'EXCESSO',
-]);
+];

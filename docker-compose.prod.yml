@@ -3,23 +3,7 @@
 # Nginx expõe 80 (HTTP) e 443 (HTTPS) → proxy para a API
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: ubus-postgres
-    restart: unless-stopped
-    ports:
-      - "5433:5432"
-    environment:
-      POSTGRES_USER: ubus
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ubus
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ubus"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+
 
   redis:
     image: redis:7-alpine
@@ -52,8 +36,6 @@ services:
       retries: 3
       start_period: 40s
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -72,5 +54,4 @@ services:
         condition: service_healthy
 
 volumes:
-  postgres_data:
   redis_data:

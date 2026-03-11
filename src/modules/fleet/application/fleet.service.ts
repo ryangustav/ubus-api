@@ -1,35 +1,21 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { DRIZZLE } from '../../../shared/database/database.module';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../../../shared/database/schema';
-import { and, eq } from 'drizzle-orm';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Linha, LinhaDocument, Onibus, OnibusDocument } from '../../../shared/database/schema/fleet.schema';
 
 @Injectable()
 export class FleetService {
-  constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
+  constructor(
+    @InjectModel(Linha.name) private linhaModel: Model<LinhaDocument>,
+    @InjectModel(Onibus.name) private onibusModel: Model<OnibusDocument>,
+  ) {}
 
   async listLinhas(idPrefeitura: string) {
-    return this.db
-      .select()
-      .from(schema.linhas)
-      .where(
-        and(
-          eq(schema.linhas.idPrefeitura, idPrefeitura),
-          eq(schema.linhas.active, true),
-        ),
-      );
+    return this.linhaModel.find({ idPrefeitura, active: true }).exec();
   }
 
   async listOnibus(idPrefeitura: string) {
-    return this.db
-      .select()
-      .from(schema.onibus)
-      .where(
-        and(
-          eq(schema.onibus.idPrefeitura, idPrefeitura),
-          eq(schema.onibus.active, true),
-        ),
-      );
+    return this.onibusModel.find({ idPrefeitura, active: true }).exec();
   }
 
   async createLinha(
@@ -42,18 +28,15 @@ export class FleetService {
       horarioFechamentoVotacao: string;
     },
   ) {
-    const [linha] = await this.db
-      .insert(schema.linhas)
-      .values({
-        idPrefeitura,
-        nome: dto.nome,
-        descricao: dto.descricao ?? null,
-        diasDaSemana: dto.diasDaSemana,
-        horarioAberturaVotacao: dto.horarioAberturaVotacao,
-        horarioFechamentoVotacao: dto.horarioFechamentoVotacao,
-      })
-      .returning();
-    return linha;
+    const linha = new this.linhaModel({
+      idPrefeitura,
+      nome: dto.nome,
+      descricao: dto.descricao,
+      diasDaSemana: dto.diasDaSemana,
+      horarioAberturaVotacao: dto.horarioAberturaVotacao,
+      horarioFechamentoVotacao: dto.horarioFechamentoVotacao,
+    });
+    return linha.save();
   }
 
   async updateLinha(
@@ -68,25 +51,12 @@ export class FleetService {
       active?: boolean;
     },
   ) {
-    const updates: Partial<typeof schema.linhas.$inferInsert> = {};
-    if (dto.nome !== undefined) updates.nome = dto.nome;
-    if (dto.descricao !== undefined) updates.descricao = dto.descricao;
-    if (dto.diasDaSemana !== undefined) updates.diasDaSemana = dto.diasDaSemana;
-    if (dto.horarioAberturaVotacao !== undefined)
-      updates.horarioAberturaVotacao = dto.horarioAberturaVotacao;
-    if (dto.horarioFechamentoVotacao !== undefined)
-      updates.horarioFechamentoVotacao = dto.horarioFechamentoVotacao;
-    if (dto.active !== undefined) updates.active = dto.active;
-    const [linha] = await this.db
-      .update(schema.linhas)
-      .set(updates)
-      .where(
-        and(
-          eq(schema.linhas.id, id),
-          eq(schema.linhas.idPrefeitura, idPrefeitura),
-        ),
-      )
-      .returning();
+    const linha = await this.linhaModel.findOneAndUpdate(
+      { _id: id, idPrefeitura },
+      { $set: dto },
+      { new: true }
+    ).exec();
+
     if (!linha) throw new NotFoundException('Route not found');
     return linha;
   }
@@ -102,31 +72,20 @@ export class FleetService {
     },
     idMotorista?: string,
   ) {
-    const [onibus] = await this.db
-      .insert(schema.onibus)
-      .values({
-        idPrefeitura,
-        idMotorista: idMotorista ?? null,
-        numeroIdentificacao: dto.numeroIdentificacao,
-        placa: dto.placa,
-        capacidadePadrao: dto.capacidadePadrao,
-        temBanheiro: dto.temBanheiro ?? false,
-        temArCondicionado: dto.temArCondicionado ?? false,
-      })
-      .returning();
-    return onibus;
+    const onibus = new this.onibusModel({
+      idPrefeitura,
+      idMotorista,
+      numeroIdentificacao: dto.numeroIdentificacao,
+      placa: dto.placa,
+      capacidadePadrao: dto.capacidadePadrao,
+      temBanheiro: dto.temBanheiro ?? false,
+      temArCondicionado: dto.temArCondicionado ?? false,
+    });
+    return onibus.save();
   }
 
   async listOnibusByMotorista(idPrefeitura: string, idMotorista: string) {
-    return this.db
-      .select()
-      .from(schema.onibus)
-      .where(
-        and(
-          eq(schema.onibus.idPrefeitura, idPrefeitura),
-          eq(schema.onibus.idMotorista, idMotorista),
-        ),
-      );
+    return this.onibusModel.find({ idPrefeitura, idMotorista }).exec();
   }
 
   async updateOnibus(
@@ -141,26 +100,12 @@ export class FleetService {
       active?: boolean;
     },
   ) {
-    const updates: Partial<typeof schema.onibus.$inferInsert> = {};
-    if (dto.numeroIdentificacao !== undefined)
-      updates.numeroIdentificacao = dto.numeroIdentificacao;
-    if (dto.placa !== undefined) updates.placa = dto.placa;
-    if (dto.capacidadePadrao !== undefined)
-      updates.capacidadePadrao = dto.capacidadePadrao;
-    if (dto.temBanheiro !== undefined) updates.temBanheiro = dto.temBanheiro;
-    if (dto.temArCondicionado !== undefined)
-      updates.temArCondicionado = dto.temArCondicionado;
-    if (dto.active !== undefined) updates.active = dto.active;
-    const [onibus] = await this.db
-      .update(schema.onibus)
-      .set(updates)
-      .where(
-        and(
-          eq(schema.onibus.id, id),
-          eq(schema.onibus.idPrefeitura, idPrefeitura),
-        ),
-      )
-      .returning();
+    const onibus = await this.onibusModel.findOneAndUpdate(
+      { _id: id, idPrefeitura },
+      { $set: dto },
+      { new: true }
+    ).exec();
+    
     if (!onibus) throw new NotFoundException('Bus not found');
     return onibus;
   }

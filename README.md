@@ -64,9 +64,16 @@ As credenciais são salvas em `scripts/super-admin-credentials.txt`. **Guarde em
 
 Documentação interativa em **http://localhost:3001/api**
 
-## Deploy Oracle Cloud
+## Deploy SSH Direto
 
-Deploy automático via GitHub Actions ao fazer push em `main`. Ver [docs/DEPLOY-OCI.md](docs/DEPLOY-OCI.md) para configuração.
+Deploy automático via GitHub Actions ao fazer push em `main`. O processo faz o build da imagem, transfere via SCP e sobe os contêineres usando direct SSH. 
+
+Requer os seguintes secrets configurados no GitHub:
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+- `DATABASE_URL`
+- `JWT_SECRET`
 
 ## Desenvolvimento
 

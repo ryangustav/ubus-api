@@ -1,12 +1,11 @@
-/**
- * Seed dos super-admins: ubus_infra e ubus_admin
- * Gera senhas de 16 caracteres e insere no banco.
- * Execute: npm run db:seed-super-admins
- */
 import * as path from 'path';
 import * as fs from 'fs';
+import mongoose from 'mongoose';
+import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+import { PrefeituraSchema } from '../src/shared/database/schema/prefeitura.schema';
+import { UsuarioSchema } from '../src/shared/database/schema/user.schema';
 
-// Carrega .env da raiz do projeto
 const envPath = path.join(process.cwd(), '.env');
 if (fs.existsSync(envPath)) {
   const env = fs.readFileSync(envPath, 'utf-8');
@@ -19,11 +18,6 @@ if (fs.existsSync(envPath)) {
     }
   }
 }
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
-import * as schema from '../src/shared/database/schema';
 
 const SISTEMA_PREFEITURA_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -33,48 +27,60 @@ function gerarSenha16(): string {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL ?? 'postgresql://postgres:123456@localhost:5432/ubus';
-  const pool = new Pool({ connectionString: url });
-  const db = drizzle(pool, { schema });
+  const url = process.env.DATABASE_URL ?? 'mongodb://ubus:ubus@localhost:27017/ubus?authSource=admin';
+  await mongoose.connect(url);
+
+  const PrefeituraModel = mongoose.model('Prefeitura', PrefeituraSchema);
+  const UsuarioModel = mongoose.model('Usuario', UsuarioSchema);
 
   const senhaInfra = gerarSenha16();
   const senhaAdmin = gerarSenha16();
 
-  await db
-    .insert(schema.prefeituras)
-    .values({
-      id: SISTEMA_PREFEITURA_ID,
-      nome: 'Sistema UBUS',
-      ativo: true,
-    })
-    .onConflictDoNothing({ target: schema.prefeituras.id });
+  await PrefeituraModel.updateOne(
+    { _id: SISTEMA_PREFEITURA_ID },
+    {
+      $setOnInsert: {
+        _id: SISTEMA_PREFEITURA_ID,
+        nome: 'Sistema UBUS',
+        ativo: true,
+      }
+    },
+    { upsert: true }
+  );
 
   const hashInfra = await bcrypt.hash(senhaInfra, 10);
   const hashAdmin = await bcrypt.hash(senhaAdmin, 10);
 
-  await db
-    .insert(schema.usuarios)
-    .values([
-      {
+  // Usa bulkWrite ou updateOne com upsert
+  await UsuarioModel.updateOne(
+    { idPrefeitura: SISTEMA_PREFEITURA_ID, email: 'ubus_infra@ubus.local' },
+    {
+      $setOnInsert: {
         idPrefeitura: SISTEMA_PREFEITURA_ID,
         cpf: '00000000001',
         nome: 'UBUS Infra',
         email: 'ubus_infra@ubus.local',
         senhaHash: hashInfra,
         role: 'SUPER_ADMIN',
-      },
-      {
+      }
+    },
+    { upsert: true }
+  );
+
+  await UsuarioModel.updateOne(
+    { idPrefeitura: SISTEMA_PREFEITURA_ID, email: 'ubus_admin@ubus.local' },
+    {
+      $setOnInsert: {
         idPrefeitura: SISTEMA_PREFEITURA_ID,
         cpf: '00000000002',
         nome: 'UBUS Admin',
         email: 'ubus_admin@ubus.local',
         senhaHash: hashAdmin,
         role: 'SUPER_ADMIN',
-      },
-    ])
-    .onConflictDoNothing({
-      target: [schema.usuarios.idPrefeitura, schema.usuarios.email],
-    });
+      }
+    },
+    { upsert: true }
+  );
 
   const credenciais = `
 # Super-Admins UBUS - Credenciais geradas em ${new Date().toISOString()}
@@ -98,7 +104,7 @@ ubus_admin
   console.log(credenciais);
   console.log('\n⚠️  Apague o arquivo super-admin-credentials.txt após anotar as senhas!');
 
-  await pool.end();
+  await mongoose.disconnect();
 }
 
 main().catch((err) => {

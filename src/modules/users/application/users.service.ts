@@ -1,29 +1,22 @@
 import {
   Injectable,
-  Inject,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { DRIZZLE } from '../../../shared/database/database.module';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../../../shared/database/schema';
-import { and, eq } from 'drizzle-orm';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Usuario, UsuarioDocument } from '../../../shared/database/schema/user.schema';
 
 @Injectable()
 export class UsersService {
-  constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
+  constructor(@InjectModel(Usuario.name) private userModel: Model<UsuarioDocument>) {}
 
   async listPendentes(municipalityId: string) {
-    return this.db
-      .select()
-      .from(schema.usuarios)
-      .where(
-        and(
-          eq(schema.usuarios.idPrefeitura, municipalityId),
-          eq(schema.usuarios.statusCadastro, 'PENDENTE'),
-          eq(schema.usuarios.role, 'ALUNO'),
-        ),
-      );
+    return this.userModel.find({
+      idPrefeitura: municipalityId,
+      statusCadastro: 'PENDENTE',
+      role: 'ALUNO',
+    }).exec();
   }
 
   async updateStatus(
@@ -31,10 +24,7 @@ export class UsersService {
     status: 'APROVADO' | 'REJEITADO',
     municipalityId: string,
   ) {
-    const [user] = await this.db
-      .select()
-      .from(schema.usuarios)
-      .where(eq(schema.usuarios.id, id));
+    const user = await this.userModel.findById(id).exec();
 
     if (!user) throw new NotFoundException('User not found');
     if (user.idPrefeitura !== municipalityId) {
@@ -44,12 +34,9 @@ export class UsersService {
       throw new ForbiddenException('User is not pending approval');
     }
 
-    const [updated] = await this.db
-      .update(schema.usuarios)
-      .set({ statusCadastro: status })
-      .where(eq(schema.usuarios.id, id))
-      .returning();
+    user.statusCadastro = status;
+    await user.save();
 
-    return updated;
+    return user;
   }
 }

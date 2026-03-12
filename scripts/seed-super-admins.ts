@@ -26,7 +26,10 @@ function gerarSenha16(): string {
   return Array.from(crypto.randomBytes(16), (b) => chars[b % chars.length]).join('');
 }
 
+import { loadOciSecrets } from '../src/config/oci-vault';
+
 async function main() {
+  await loadOciSecrets();
   const url = process.env.DATABASE_URL ?? 'mongodb://ubus:ubus@localhost:27017/ubus?authSource=admin';
   await mongoose.connect(url);
 

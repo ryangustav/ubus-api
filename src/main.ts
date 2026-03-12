@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { loadOciSecrets } from './config/oci-vault';
 
 async function bootstrap() {
+  await loadOciSecrets();
   const app = await NestFactory.create(AppModule);
 
   const config = new DocumentBuilder()

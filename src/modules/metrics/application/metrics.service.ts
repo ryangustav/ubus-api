@@ -75,7 +75,7 @@ export class MetricsService {
     weekEnd.setDate(weekEnd.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
 
-    const weeklyTripsRaw = await this.viagemModel
+    const weeklyTripsRaw = (await this.viagemModel
       .aggregate([
         {
           $match: {
@@ -99,7 +99,7 @@ export class MetricsService {
           },
         },
       ])
-      .exec();
+      .exec()) as Array<{ date: string; count: number }>;
 
     const weeklyTrips = weeklyTripsRaw.map((v) => ({
       date: v.date,

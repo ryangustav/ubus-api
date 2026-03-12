@@ -21,7 +21,7 @@ export async function loadOciSecrets(): Promise<void> {
     try {
       // First attempt: local config file (~/.oci/config)
       provider = new common.ConfigFileAuthenticationDetailsProvider();
-    } catch (e) {
+    } catch {
       // Fallback: use Instance Principals if running in OCI
       console.log(
         'ℹ️  No local OCI config found. Falling back to Instance Principals...',
@@ -38,15 +38,23 @@ export async function loadOciSecrets(): Promise<void> {
       secretId: secretOcid,
     });
 
-    const bundleContent = response.secretBundle.secretBundleContent as any;
+    const bundleContent = response.secretBundle
+      .secretBundleContent as unknown as {
+      contentType?: string;
+      content?: string;
+    };
 
-    if (bundleContent && bundleContent.contentType === 'BASE64') {
+    if (
+      bundleContent &&
+      bundleContent.contentType === 'BASE64' &&
+      bundleContent.content
+    ) {
       const base64Str = bundleContent.content;
       const decodedStr = Buffer.from(base64Str, 'base64').toString('utf-8');
 
       let parsedSecrets: Record<string, string>;
       try {
-        parsedSecrets = JSON.parse(decodedStr);
+        parsedSecrets = JSON.parse(decodedStr) as Record<string, string>;
       } catch (err) {
         console.error('❌  Failed to parse OCI Secret content as JSON.');
         throw err;

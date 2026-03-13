@@ -41,6 +41,8 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-ubus-secret-change-in-prod}
       PORT: 3001
+      USE_OCI_VAULT: ${USE_OCI_VAULT:-false}
+      OCI_SECRET_OCID: ${OCI_SECRET_OCID:-}
     depends_on:
       mongodb:
         condition: service_healthy

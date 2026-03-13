@@ -33,6 +33,8 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          USE_OCI_VAULT: ${{ secrets.USE_OCI_VAULT }}
+          OCI_SECRET_OCID: ${{ secrets.OCI_SECRET_OCID }}
         run: |
           if [ -n "$DEPLOY_PATH" ]; then DEPLOY_DIR="$DEPLOY_PATH"; else DEPLOY_DIR='$HOME/ubus'; fi
           echo "mkdir -p $DEPLOY_DIR" > prepare.sh
@@ -44,6 +46,8 @@ jobs:
             echo "REDIS_HOST=redis"
             echo "REDIS_PORT=6379"
             echo "JWT_SECRET=$JWT_SECRET"
+            echo "USE_OCI_VAULT=$USE_OCI_VAULT"
+            echo "OCI_SECRET_OCID=$OCI_SECRET_OCID"
           } > .env.prod
           
           cat > deploy.sh << SCRIPT

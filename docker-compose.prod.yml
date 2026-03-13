@@ -29,6 +29,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET}
+      USE_OCI_VAULT: ${USE_OCI_VAULT:-false}
+      OCI_SECRET_OCID: ${OCI_SECRET_OCID}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api"]
       interval: 30s

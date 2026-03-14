@@ -62,6 +62,11 @@ jobs:
           echo "Deploying..."
           export IMAGE="ubus-api:latest"
           docker compose -f docker-compose.prod.yml up -d --force-recreate
+          
+          sleep 5
+          echo "Running Drizzle Migrations..."
+          docker exec ubus-api npx drizzle-kit migrate --config=drizzle.config.js
+          
           docker image prune -f
           SCRIPT
           chmod +x deploy.sh prepare.sh

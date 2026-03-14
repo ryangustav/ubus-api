@@ -1,12 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import type Redis from 'ioredis';
-import {
-  Prefeitura,
-  PrefeituraDocument,
-} from '../../shared/database/schema/prefeitura.schema';
+import { DRIZZLE } from '../../shared/database/database.module';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../shared/database/schema';
+import { prefeituras } from '../../shared/database/schema/prefeitura.schema';
+import { sql } from 'drizzle-orm';
 import type { HealthQueryDto } from './health.dto';
 
 export interface HealthResult {
@@ -26,8 +25,7 @@ export interface HealthResult {
 export class HealthService {
   constructor(
     @InjectRedis() private readonly redis: Redis,
-    @InjectModel(Prefeitura.name)
-    private readonly prefeituraModel: Model<PrefeituraDocument>,
+    @Inject(DRIZZLE) private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
   async check(query?: HealthQueryDto): Promise<HealthResult> {
@@ -68,7 +66,10 @@ export class HealthService {
       const dbStart = performance.now();
       let rowCount = 0;
       for (let i = 0; i < iterations; i++) {
-        rowCount = await this.prefeituraModel.countDocuments().exec();
+        const rows = await this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(prefeituras);
+        rowCount = Number(rows[0]?.count ?? 0);
         if (delayMs > 0) await this.sleep(delayMs);
       }
       result.db = {
@@ -89,7 +90,8 @@ export class HealthService {
         iterations,
         totalRedisMs: result.redis.latencyMs ?? 0,
         totalDbMs: result.db.latencyMs ?? 0,
-        totalMs: (result.redis.latencyMs ?? 0) + (result.db.latencyMs ?? 0),
+        totalMs:
+          (result.redis.latencyMs ?? 0) + (result.db.latencyMs ?? 0),
       };
     }
 

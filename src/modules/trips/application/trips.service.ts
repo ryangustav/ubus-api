@@ -1,28 +1,15 @@
 import {
   Injectable,
+  Inject,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import type Redis from 'ioredis';
-import {
-  Viagem,
-  ViagemDocument,
-} from '../../../shared/database/schema/trip.schema';
-import {
-  Usuario,
-  UsuarioDocument,
-} from '../../../shared/database/schema/user.schema';
-import {
-  Linha,
-  LinhaDocument,
-} from '../../../shared/database/schema/fleet.schema';
-import {
-  Reserva,
-  ReservaDocument,
-} from '../../../shared/database/schema/reservation.schema';
+import { DRIZZLE } from '../../../shared/database/database.module';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../../shared/database/schema';
+import { eq, and, gte, lte } from 'drizzle-orm';
 
 const TRIP_LOCATION_PREFIX = 'trip:location:';
 const TRIP_ALERTA_PREFIX = 'trip:alerta:';
@@ -31,10 +18,7 @@ const ALERTA_TTL = 300; // 5 min
 @Injectable()
 export class TripsService {
   constructor(
-    @InjectModel(Viagem.name) private viagemModel: Model<ViagemDocument>,
-    @InjectModel(Usuario.name) private usuarioModel: Model<UsuarioDocument>,
-    @InjectModel(Linha.name) private linhaModel: Model<LinhaDocument>,
-    @InjectModel(Reserva.name) private reservaModel: Model<ReservaDocument>,
+    @Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>,
     @InjectRedis() private redis: Redis,
   ) {}
 
@@ -51,35 +35,45 @@ export class TripsService {
     fechamentoVotacao: string;
     lideresIds?: string[];
   }) {
-    const viagem = new this.viagemModel({
-      idViagem: dto.idViagem,
-      dataViagem: new Date(dto.dataViagem),
-      turno: dto.turno,
-      direcao: dto.direcao,
-      idLinha: dto.idLinha,
-      idOnibus: dto.idOnibus,
-      idMotorista: dto.idMotorista,
-      capacidadeReal: dto.capacidadeReal,
-      aberturaVotacao: new Date(dto.aberturaVotacao),
-      fechamentoVotacao: new Date(dto.fechamentoVotacao),
-      lideresIds: dto.lideresIds ?? [],
-    });
-    return viagem.save();
+    const [viagem] = await this.db
+      .insert(schema.viagens)
+      .values({
+        idViagem: dto.idViagem,
+        dataViagem: dto.dataViagem,
+        turno: dto.turno,
+        direcao: dto.direcao,
+        idLinha: dto.idLinha,
+        idOnibus: dto.idOnibus,
+        idMotorista: dto.idMotorista ?? null,
+        capacidadeReal: dto.capacidadeReal,
+        aberturaVotacao: new Date(dto.aberturaVotacao),
+        fechamentoVotacao: new Date(dto.fechamentoVotacao),
+        lideresIds: dto.lideresIds ?? [],
+      })
+      .returning();
+    return viagem;
   }
 
   async getViagem(idViagem: string) {
-    return this.viagemModel.findOne({ idViagem }).exec();
+    const [viagem] = await this.db
+      .select()
+      .from(schema.viagens)
+      .where(eq(schema.viagens.idViagem, idViagem));
+    return viagem;
   }
 
   async listViagensAbertas() {
     const now = new Date();
-    return this.viagemModel
-      .find({
-        status: 'ABERTA_PARA_RESERVA',
-        aberturaVotacao: { $lte: now },
-        fechamentoVotacao: { $gte: now },
-      })
-      .exec();
+    return this.db
+      .select()
+      .from(schema.viagens)
+      .where(
+        and(
+          eq(schema.viagens.status, 'ABERTA_PARA_RESERVA'),
+          lte(schema.viagens.aberturaVotacao, now),
+          gte(schema.viagens.fechamentoVotacao, now),
+        ),
+      );
   }
 
   async updateViagem(
@@ -99,8 +93,7 @@ export class TripsService {
     }>,
   ) {
     const updates: Record<string, unknown> = {};
-    if (dto.dataViagem !== undefined)
-      updates.dataViagem = new Date(dto.dataViagem);
+    if (dto.dataViagem !== undefined) updates.dataViagem = dto.dataViagem;
     if (dto.turno !== undefined) updates.turno = dto.turno;
     if (dto.direcao !== undefined) updates.direcao = dto.direcao;
     if (dto.idLinha !== undefined) updates.idLinha = dto.idLinha;
@@ -115,10 +108,11 @@ export class TripsService {
     if (dto.lideresIds !== undefined) updates.lideresIds = dto.lideresIds;
     if (dto.status !== undefined) updates.status = dto.status;
 
-    const viagem = await this.viagemModel
-      .findOneAndUpdate({ idViagem }, { $set: updates }, { new: true })
-      .exec();
-
+    const [viagem] = await this.db
+      .update(schema.viagens)
+      .set(updates as Record<string, never>)
+      .where(eq(schema.viagens.idViagem, idViagem))
+      .returning();
     if (!viagem) throw new NotFoundException('Trip not found');
     return viagem;
   }
@@ -128,17 +122,26 @@ export class TripsService {
     userId: string,
     municipalityId: string,
   ) {
-    const viagem = await this.viagemModel.findOne({ idViagem }).exec();
+    const [viagem] = await this.db
+      .select()
+      .from(schema.viagens)
+      .where(eq(schema.viagens.idViagem, idViagem));
     if (!viagem) throw new NotFoundException('Trip not found');
 
     const isLeader =
       Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
-    const motorista = viagem.idMotorista
-      ? await this.usuarioModel.findById(viagem.idMotorista).exec()
-      : null;
+    const [motorista] = viagem.idMotorista
+      ? await this.db
+          .select()
+          .from(schema.usuarios)
+          .where(eq(schema.usuarios.id, viagem.idMotorista))
+      : [null];
     const isMotorista = motorista?.id === userId;
 
-    const linha = await this.linhaModel.findById(viagem.idLinha).exec();
+    const [linha] = await this.db
+      .select()
+      .from(schema.linhas)
+      .where(eq(schema.linhas.id, viagem.idLinha));
     if (linha?.idPrefeitura !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
@@ -157,13 +160,18 @@ export class TripsService {
     userId: string,
     municipalityId: string,
   ) {
-    const viagem = await this.viagemModel.findOne({ idViagem }).exec();
+    const [viagem] = await this.db
+      .select()
+      .from(schema.viagens)
+      .where(eq(schema.viagens.idViagem, idViagem));
     if (!viagem) throw new NotFoundException('Trip not found');
 
     const isLeader =
       Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
-    const linha = await this.linhaModel.findById(viagem.idLinha).exec();
-
+    const [linha] = await this.db
+      .select()
+      .from(schema.linhas)
+      .where(eq(schema.linhas.id, viagem.idLinha));
     if (linha?.idPrefeitura !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
@@ -171,28 +179,40 @@ export class TripsService {
       throw new ForbiddenException('Only leader can confirm absences');
     }
 
-    const reservas = await this.reservaModel.find({ idViagem }).exec();
+    const reservas = await this.db
+      .select()
+      .from(schema.reservas)
+      .where(eq(schema.reservas.idViagem, idViagem));
 
     for (const r of reservas) {
       if (r.status === 'CONFIRMADA') {
-        r.status = 'FALTOU';
-        await r.save();
+        await this.db
+          .update(schema.reservas)
+          .set({ status: 'FALTOU' })
+          .where(eq(schema.reservas.id, r.id));
 
-        const user = await this.usuarioModel.findById(r.idUsuario).exec();
+        const [user] = await this.db
+          .select({ nivelPrioridade: schema.usuarios.nivelPrioridade })
+          .from(schema.usuarios)
+          .where(eq(schema.usuarios.id, r.idUsuario));
         const newLevel = Math.min(3, (user?.nivelPrioridade ?? 1) + 1);
         const blockUntil = new Date();
         blockUntil.setDate(blockUntil.getDate() + 7);
 
-        if (user) {
-          user.nivelPrioridade = newLevel;
-          user.bloqueioAssentoAte = blockUntil;
-          await user.save();
-        }
+        await this.db
+          .update(schema.usuarios)
+          .set({
+            nivelPrioridade: newLevel,
+            bloqueioAssentoAte: blockUntil,
+          })
+          .where(eq(schema.usuarios.id, r.idUsuario));
       }
     }
 
-    viagem.status = 'FINALIZADA';
-    await viagem.save();
+    await this.db
+      .update(schema.viagens)
+      .set({ status: 'FINALIZADA' })
+      .where(eq(schema.viagens.idViagem, idViagem));
 
     return { message: 'Absences confirmed and penalties applied' };
   }
@@ -203,20 +223,25 @@ export class TripsService {
     userId: string,
     municipalityId: string,
   ) {
-    const viagemOrigem = await this.viagemModel.findOne({ idViagem }).exec();
+    const [viagemOrigem] = await this.db
+      .select()
+      .from(schema.viagens)
+      .where(eq(schema.viagens.idViagem, idViagem));
     if (!viagemOrigem) throw new NotFoundException('Origin trip not found');
 
-    const viagemDestino = await this.viagemModel
-      .findOne({ idViagem: tripIdDestino })
-      .exec();
-    if (!viagemDestino)
-      throw new NotFoundException('Destination trip not found');
+    const [viagemDestino] = await this.db
+      .select()
+      .from(schema.viagens)
+      .where(eq(schema.viagens.idViagem, tripIdDestino));
+    if (!viagemDestino) throw new NotFoundException('Destination trip not found');
 
     const isLeader =
       Array.isArray(viagemOrigem.lideresIds) &&
       viagemOrigem.lideresIds.includes(userId);
-    const linha = await this.linhaModel.findById(viagemOrigem.idLinha).exec();
-
+    const [linha] = await this.db
+      .select()
+      .from(schema.linhas)
+      .where(eq(schema.linhas.id, viagemOrigem.idLinha));
     if (linha?.idPrefeitura !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
@@ -224,33 +249,42 @@ export class TripsService {
       throw new ForbiddenException('Only leader can relocate');
     }
 
-    const reservas = await this.reservaModel.find({ idViagem }).exec();
-    const ocupadosDestino = await this.reservaModel
-      .find({ idViagem: tripIdDestino })
-      .exec();
+    const reservas = await this.db
+      .select()
+      .from(schema.reservas)
+      .where(eq(schema.reservas.idViagem, idViagem));
+
+    const ocupadosDestino = await this.db
+      .select({ numeroAssento: schema.reservas.numeroAssento })
+      .from(schema.reservas)
+      .where(eq(schema.reservas.idViagem, tripIdDestino));
 
     const ocupadosSet = new Set(
-      ocupadosDestino
-        .map((o) => o.numeroAssento)
-        .filter((n): n is number => n != null),
+      ocupadosDestino.map((o) => o.numeroAssento).filter((n): n is number => n != null),
     );
 
     let seat = 1;
     for (const r of reservas) {
-      let newSeat: number | null | undefined = r.numeroAssento;
+      let newSeat: number | null = r.numeroAssento;
       if (r.numeroAssento != null) {
         while (ocupadosSet.has(seat)) seat++;
         newSeat = seat;
         ocupadosSet.add(seat);
       }
 
-      r.idViagem = tripIdDestino;
-      r.numeroAssento = newSeat;
-      await r.save();
+      await this.db
+        .update(schema.reservas)
+        .set({
+          idViagem: tripIdDestino,
+          numeroAssento: newSeat,
+        })
+        .where(eq(schema.reservas.id, r.id));
     }
 
-    viagemOrigem.status = 'CANCELADA';
-    await viagemOrigem.save();
+    await this.db
+      .update(schema.viagens)
+      .set({ status: 'CANCELADA' })
+      .where(eq(schema.viagens.idViagem, idViagem));
 
     return { message: 'Relocation completed' };
   }
@@ -262,14 +296,19 @@ export class TripsService {
     userId: string,
     municipalityId: string,
   ) {
-    const viagem = await this.viagemModel.findOne({ idViagem }).exec();
+    const [viagem] = await this.db
+      .select()
+      .from(schema.viagens)
+      .where(eq(schema.viagens.idViagem, idViagem));
     if (!viagem) throw new NotFoundException('Trip not found');
 
     const isMotorista = viagem.idMotorista === userId;
     const isLeader =
       Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
-
-    const linha = await this.linhaModel.findById(viagem.idLinha).exec();
+    const [linha] = await this.db
+      .select()
+      .from(schema.linhas)
+      .where(eq(schema.linhas.id, viagem.idLinha));
     if (linha?.idPrefeitura !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }

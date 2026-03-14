@@ -1,72 +1,68 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  Usuario,
-  UsuarioDocument,
-} from '../../../shared/database/schema/user.schema';
-import {
-  Viagem,
-  ViagemDocument,
-} from '../../../shared/database/schema/trip.schema';
-import {
-  Linha,
-  LinhaDocument,
-} from '../../../shared/database/schema/fleet.schema';
-import {
-  Onibus,
-  OnibusDocument,
-} from '../../../shared/database/schema/fleet.schema';
+import { Injectable, Inject } from '@nestjs/common';
+import { DRIZZLE } from '../../../shared/database/database.module';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../../shared/database/schema';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 
 @Injectable()
 export class MetricsService {
-  constructor(
-    @InjectModel(Usuario.name) private usuarioModel: Model<UsuarioDocument>,
-    @InjectModel(Viagem.name) private viagemModel: Model<ViagemDocument>,
-    @InjectModel(Linha.name) private linhaModel: Model<LinhaDocument>,
-    @InjectModel(Onibus.name) private onibusModel: Model<OnibusDocument>,
-  ) {}
+  constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
   async getDashboard(municipalityId: string) {
     const today = new Date().toISOString().slice(0, 10);
 
-    const activeStudents = await this.usuarioModel
-      .countDocuments({
-        idPrefeitura: municipalityId,
-        role: 'ALUNO',
-        statusCadastro: 'APROVADO',
+    const [activeStudents] = await this.db
+      .select({
+        count: sql<number>`count(*)::int`,
       })
-      .exec();
+      .from(schema.usuarios)
+      .where(
+        and(
+          eq(schema.usuarios.idPrefeitura, municipalityId),
+          eq(schema.usuarios.role, 'ALUNO'),
+          eq(schema.usuarios.statusCadastro, 'APROVADO'),
+        ),
+      );
 
-    const linhas = await this.linhaModel
-      .find({ idPrefeitura: municipalityId })
-      .select('_id')
-      .exec();
-    const linhasIds = linhas.map((l) => l.id);
-
-    const tripsToday = await this.viagemModel
-      .countDocuments({
-        idLinha: { $in: linhasIds },
-        dataViagem: {
-          $gte: new Date(today),
-          $lt: new Date(new Date(today).getTime() + 86400000),
-        },
+    const [tripsToday] = await this.db
+      .select({
+        count: sql<number>`count(*)::int`,
       })
-      .exec();
+      .from(schema.viagens)
+      .innerJoin(
+        schema.linhas,
+        eq(schema.viagens.idLinha, schema.linhas.id),
+      )
+      .where(
+        and(
+          eq(schema.linhas.idPrefeitura, municipalityId),
+          eq(schema.viagens.dataViagem, today),
+        ),
+      );
 
-    const pendingCount = await this.usuarioModel
-      .countDocuments({
-        idPrefeitura: municipalityId,
-        statusCadastro: 'PENDENTE',
+    const [pendingCount] = await this.db
+      .select({
+        count: sql<number>`count(*)::int`,
       })
-      .exec();
+      .from(schema.usuarios)
+      .where(
+        and(
+          eq(schema.usuarios.idPrefeitura, municipalityId),
+          eq(schema.usuarios.statusCadastro, 'PENDENTE'),
+        ),
+      );
 
-    const fleetActive = await this.onibusModel
-      .countDocuments({
-        idPrefeitura: municipalityId,
-        active: true,
+    const [fleetActive] = await this.db
+      .select({
+        count: sql<number>`count(*)::int`,
       })
-      .exec();
+      .from(schema.onibus)
+      .where(
+        and(
+          eq(schema.onibus.idPrefeitura, municipalityId),
+          eq(schema.onibus.active, true),
+        ),
+      );
 
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -75,43 +71,31 @@ export class MetricsService {
     weekEnd.setDate(weekEnd.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
 
-    const weeklyTripsRaw = (await this.viagemModel
-      .aggregate([
-        {
-          $match: {
-            idLinha: { $in: linhasIds },
-            dataViagem: { $gte: weekStart, $lte: weekEnd },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              $dateToString: { format: '%Y-%m-%d', date: '$dataViagem' },
-            },
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            date: '$_id',
-            count: 1,
-          },
-        },
-      ])
-      .exec()) as Array<{ date: string; count: number }>;
-
-    const weeklyTrips = weeklyTripsRaw.map((v) => ({
-      date: v.date,
-      count: v.count,
-    }));
+    const weeklyTrips = await this.db
+      .select({
+        dataViagem: schema.viagens.dataViagem,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.viagens)
+      .innerJoin(schema.linhas, eq(schema.viagens.idLinha, schema.linhas.id))
+      .where(
+        and(
+          eq(schema.linhas.idPrefeitura, municipalityId),
+          gte(schema.viagens.dataViagem, weekStart.toISOString().slice(0, 10)),
+          lte(schema.viagens.dataViagem, weekEnd.toISOString().slice(0, 10)),
+        ),
+      )
+      .groupBy(schema.viagens.dataViagem);
 
     return {
-      activeStudents,
-      tripsToday,
-      pendingApprovals: pendingCount,
-      fleetActive,
-      weeklyTrips,
+      activeStudents: activeStudents?.count ?? 0,
+      tripsToday: tripsToday?.count ?? 0,
+      pendingApprovals: pendingCount?.count ?? 0,
+      fleetActive: fleetActive?.count ?? 0,
+      weeklyTrips: weeklyTrips.map((r) => ({
+        date: r.dataViagem,
+        count: r.count,
+      })),
     };
   }
 }

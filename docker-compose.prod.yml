@@ -1,18 +1,21 @@
 # Produção - Oracle Cloud
-# Postgres e Redis rodam no mesmo compose; API usa rede interna
-# Nginx expõe 80 (HTTP) e 443 (HTTPS) → proxy para a API
+# Backend API, Postgres e Nginx
 
 services:
-
-
-  redis:
-    image: redis:7-alpine
-    container_name: ubus-redis
+  postgres:
+    image: postgres:16-alpine
+    container_name: ubus-postgres
     restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-QQ485H7x0d2Ryi}
+      POSTGRES_DB: ubus
     volumes:
-      - redis_data:/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ubus"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,15 +24,17 @@ services:
     image: ${IMAGE:-ubus-api:latest}
     container_name: ubus-api
     restart: unless-stopped
+    network_mode: "host"
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: redis://redis:6379
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET}
-      USE_OCI_VAULT: ${USE_OCI_VAULT:-false}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:QQ485H7x0d2Ryi@localhost:5432/ubus}
+      REDIS_URL: ${REDIS_URL:-redis://:9L75fhb7v35FDh@10.0.0.67:6379}
+      REDIS_HOST: ${REDIS_HOST:-10.0.0.67}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-9L75fhb7v35FDh}
+      JWT_SECRET: ${JWT_SECRET:-ixcrMtgaxDcXx4UoGoHgDyBvKJ6Bs4ve4qgoa+82awC+RQtiZKuGTLnkPJVsF6gYxFU3N3oA2wDvx6I6mONawg==}
+      USE_OCI_VAULT: "true"
       OCI_SECRET_OCID: ${OCI_SECRET_OCID}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api"]
@@ -38,22 +43,17 @@ services:
       retries: 3
       start_period: 40s
     depends_on:
-      redis:
+      postgres:
         condition: service_healthy
 
   nginx:
     image: nginx:alpine
     container_name: ubus-nginx
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
+    network_mode: "host"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/certs:/etc/nginx/certs:ro
-    depends_on:
-      api:
-        condition: service_healthy
 
 volumes:
-  redis_data:
+  postgres_data:

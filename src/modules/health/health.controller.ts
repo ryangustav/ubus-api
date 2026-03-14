@@ -32,9 +32,7 @@ export class HealthController {
       iterations: query.iterations,
       delayMs: query.delayMs,
     });
-    const dto: HealthQueryDto = parsed.success
-      ? parsed.data
-      : { iterations: 1, delayMs: 0 };
+    const dto: HealthQueryDto = parsed.success ? parsed.data : { iterations: 1, delayMs: 0 };
     return this.health.check(dto);
   }
 }

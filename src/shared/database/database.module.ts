@@ -1,19 +1,28 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import * as schema from './schema';
+
+export const DRIZZLE = Symbol('DRIZZLE');
 
 @Global()
 @Module({
-  imports: [
-    MongooseModule.forRootAsync({
+  providers: [
+    {
+      provide: DRIZZLE,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri:
-          config.get<string>('DATABASE_URL') ||
-          'mongodb://ubus:ubus@localhost:27017/ubus?authSource=admin',
-      }),
-    }),
+      useFactory: (config: ConfigService) => {
+        const connectionString: string =
+          config.get('DATABASE_URL') ??
+          'postgresql://ubus:ubus@localhost:5432/ubus';
+        /* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
+        const pool = new Pool({ connectionString });
+        /* eslint-disable-next-line @typescript-eslint/no-unsafe-argument */
+        return drizzle(pool, { schema });
+      },
+    },
   ],
-  exports: [MongooseModule],
+  exports: [DRIZZLE],
 })
 export class DatabaseModule {}

@@ -1,29 +1,29 @@
 import {
   Injectable,
+  Inject,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  Usuario,
-  UsuarioDocument,
-} from '../../../shared/database/schema/user.schema';
+import { DRIZZLE } from '../../../shared/database/database.module';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../../shared/database/schema';
+import { and, eq } from 'drizzle-orm';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectModel(Usuario.name) private userModel: Model<UsuarioDocument>,
-  ) {}
+  constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
   async listPendentes(municipalityId: string) {
-    return this.userModel
-      .find({
-        idPrefeitura: municipalityId,
-        statusCadastro: 'PENDENTE',
-        role: 'ALUNO',
-      })
-      .exec();
+    return this.db
+      .select()
+      .from(schema.usuarios)
+      .where(
+        and(
+          eq(schema.usuarios.idPrefeitura, municipalityId),
+          eq(schema.usuarios.statusCadastro, 'PENDENTE'),
+          eq(schema.usuarios.role, 'ALUNO'),
+        ),
+      );
   }
 
   async updateStatus(
@@ -31,7 +31,10 @@ export class UsersService {
     status: 'APROVADO' | 'REJEITADO',
     municipalityId: string,
   ) {
-    const user = await this.userModel.findById(id).exec();
+    const [user] = await this.db
+      .select()
+      .from(schema.usuarios)
+      .where(eq(schema.usuarios.id, id));
 
     if (!user) throw new NotFoundException('User not found');
     if (user.idPrefeitura !== municipalityId) {
@@ -41,9 +44,12 @@ export class UsersService {
       throw new ForbiddenException('User is not pending approval');
     }
 
-    user.statusCadastro = status;
-    await user.save();
+    const [updated] = await this.db
+      .update(schema.usuarios)
+      .set({ statusCadastro: status })
+      .where(eq(schema.usuarios.id, id))
+      .returning();
 
-    return user;
+    return updated;
   }
 }

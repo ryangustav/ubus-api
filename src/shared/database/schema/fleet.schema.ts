@@ -1,84 +1,72 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { randomUUID } from 'crypto';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  boolean,
+  timestamp,
+  integer,
+  unique,
+} from 'drizzle-orm/pg-core';
+import { prefeituras } from './prefeitura.schema';
+import { usuarios } from './user.schema';
 
-export type LinhaDocument = Linha & Document;
-
-@Schema({
-  timestamps: { createdAt: 'criadoEm', updatedAt: false },
-  collection: 'linhas',
-})
-export class Linha {
-  @Prop({ type: String, default: () => randomUUID() })
-  _id: string;
-
-  @Prop({ type: String, required: true, ref: 'Prefeitura' })
-  idPrefeitura: string;
-
-  @Prop({ required: true, maxlength: 100 })
-  nome: string;
-
-  @Prop()
-  descricao?: string;
-
-  @Prop({ type: [Number], required: true, default: [] })
-  diasDaSemana: number[];
-
-  @Prop({ required: true, default: '06:00', maxlength: 5 })
-  horarioAberturaVotacao: string;
-
-  @Prop({ required: true, default: '07:30', maxlength: 5 })
-  horarioFechamentoVotacao: string;
-
-  @Prop({ default: true })
-  active: boolean;
-
-  criadoEm?: Date;
-}
-
-export const LinhaSchema = SchemaFactory.createForClass(Linha);
-LinhaSchema.index({ idPrefeitura: 1, nome: 1 }, { unique: true });
-
-export type OnibusDocument = Onibus & Document;
-
-@Schema({
-  timestamps: { createdAt: 'criadoEm', updatedAt: false },
-  collection: 'onibus',
-})
-export class Onibus {
-  @Prop({ type: String, default: () => randomUUID() })
-  _id: string;
-
-  @Prop({ type: String, required: true, ref: 'Prefeitura' })
-  idPrefeitura: string;
-
-  @Prop({ type: String, ref: 'Usuario' })
-  idMotorista?: string;
-
-  @Prop({ required: true, maxlength: 20 })
-  numeroIdentificacao: string;
-
-  @Prop({ required: true, maxlength: 10 })
-  placa: string;
-
-  @Prop({ required: true })
-  capacidadePadrao: number;
-
-  @Prop({ default: false })
-  temBanheiro: boolean;
-
-  @Prop({ default: false })
-  temArCondicionado: boolean;
-
-  @Prop({ default: true })
-  active: boolean;
-
-  criadoEm?: Date;
-}
-
-export const OnibusSchema = SchemaFactory.createForClass(Onibus);
-OnibusSchema.index(
-  { idPrefeitura: 1, numeroIdentificacao: 1 },
-  { unique: true },
+export const linhas = pgTable(
+  'linhas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    idPrefeitura: uuid('id_prefeitura')
+      .notNull()
+      .references(() => prefeituras.id, { onDelete: 'cascade' }),
+    nome: varchar('nome', { length: 100 }).notNull(),
+    descricao: text('descricao'),
+    /** Dias da semana: 0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sab */
+    diasDaSemana: integer('dias_da_semana').array().notNull().default([]),
+    /** Horário que abre votação para marcar lugares (HH:mm) */
+    horarioAberturaVotacao: varchar('horario_abertura_votacao', { length: 5 })
+      .notNull()
+      .default('06:00'),
+    /** Horário que finaliza votação para marcar lugares (HH:mm) */
+    horarioFechamentoVotacao: varchar('horario_fechamento_votacao', {
+      length: 5,
+    })
+      .notNull()
+      .default('07:30'),
+    active: boolean('is_ativo').default(true),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    unique('uq_linha_nome_prefeitura').on(table.idPrefeitura, table.nome),
+  ],
 );
-OnibusSchema.index({ idPrefeitura: 1, placa: 1 }, { unique: true });
+
+export const onibus = pgTable(
+  'onibus',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    idPrefeitura: uuid('id_prefeitura')
+      .notNull()
+      .references(() => prefeituras.id, { onDelete: 'cascade' }),
+    /** Motorista que cadastrou o ônibus */
+    idMotorista: uuid('id_motorista').references(() => usuarios.id, {
+      onDelete: 'set null',
+    }),
+    numeroIdentificacao: varchar('numero_identificacao', {
+      length: 20,
+    }).notNull(),
+    placa: varchar('placa', { length: 10 }).notNull(),
+    capacidadePadrao: integer('capacidade_padrao').notNull(),
+    temBanheiro: boolean('tem_banheiro').default(false),
+    temArCondicionado: boolean('tem_ar_condicionado').default(false),
+    /** Active for capacity calculation */
+    active: boolean('is_ativo').default(true),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    unique('uq_onibus_numero_prefeitura').on(
+      table.idPrefeitura,
+      table.numeroIdentificacao,
+    ),
+    unique('uq_onibus_placa_prefeitura').on(table.idPrefeitura, table.placa),
+  ],
+);

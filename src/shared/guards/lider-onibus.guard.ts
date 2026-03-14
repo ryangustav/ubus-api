@@ -1,15 +1,16 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Onibus, OnibusDocument } from '../database/schema/fleet.schema';
-import { Viagem, ViagemDocument } from '../database/schema/trip.schema';
+import { Inject } from '@nestjs/common';
+import { DRIZZLE } from '../database/database.module';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../database/schema';
+import { eq } from 'drizzle-orm';
 
+/**
+ * Permite: GESTOR, MOTORISTA ou líder de alguma viagem que usa este ônibus.
+ */
 @Injectable()
 export class LiderOnibusGuard implements CanActivate {
-  constructor(
-    @InjectModel(Onibus.name) private onibusModel: Model<OnibusDocument>,
-    @InjectModel(Viagem.name) private viagemModel: Model<ViagemDocument>,
-  ) {}
+  constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<{
@@ -24,11 +25,17 @@ export class LiderOnibusGuard implements CanActivate {
     const idOnibus = req.params?.id;
     if (!idOnibus) return false;
 
-    const onibus = await this.onibusModel.findById(idOnibus).exec();
+    const [onibus] = await this.db
+      .select()
+      .from(schema.onibus)
+      .where(eq(schema.onibus.id, idOnibus));
 
     if (!onibus || onibus.idPrefeitura !== user.municipalityId) return false;
 
-    const viagens = await this.viagemModel.find({ idOnibus }).exec();
+    const viagens = await this.db
+      .select({ lideresIds: schema.viagens.lideresIds })
+      .from(schema.viagens)
+      .where(eq(schema.viagens.idOnibus, idOnibus));
 
     const userId = user.sub;
     return viagens.some(

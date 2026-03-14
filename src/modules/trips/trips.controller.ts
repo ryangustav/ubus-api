@@ -58,7 +58,10 @@ export class TripsController {
   @ApiOperation({ summary: 'Update trip (manager only)' })
   @ApiParam({ name: 'tripId' })
   @ApiBody({ type: UpdateViagemDto })
-  updateTrip(@Param('tripId') tripId: string, @Body() dto: UpdateViagemDto) {
+  updateTrip(
+    @Param('tripId') tripId: string,
+    @Body() dto: UpdateViagemDto,
+  ) {
     return this.trips.updateViagem(tripId, dto);
   }
 
@@ -67,10 +70,7 @@ export class TripsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Trigger confirmation alert (leader/driver)' })
   @ApiParam({ name: 'tripId' })
-  triggerAlerta(
-    @Param('tripId') tripId: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  triggerAlerta(@Param('tripId') tripId: string, @CurrentUser() user: JwtPayload) {
     return this.trips.triggerAlertaConfirmacao(
       tripId,
       user.sub,
@@ -83,10 +83,7 @@ export class TripsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Confirm absences and apply penalties (leader)' })
   @ApiParam({ name: 'tripId' })
-  encerrarEPunir(
-    @Param('tripId') tripId: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  encerrarEPunir(@Param('tripId') tripId: string, @CurrentUser() user: JwtPayload) {
     return this.trips.encerrarEPunir(tripId, user.sub, user.municipalityId);
   }
 

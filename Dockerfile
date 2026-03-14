@@ -12,8 +12,12 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
+# Variáveis de ambiente de produção
 ENV NODE_ENV=production
 ENV PORT=3001
+# Configuração do OCI Vault incorporada diretamente
+ENV USE_OCI_VAULT=true
+ENV OCI_SECRET_OCID=ocid1.vaultsecret.oc1.sa-saopaulo-1.amaaaaaakqk4tzia3i3v3vneo3ir3pdetn3tmqa7yebcwrpzq5v7g25r2nxa
 
 COPY package*.json ./
 RUN npm ci --omit=dev --legacy-peer-deps

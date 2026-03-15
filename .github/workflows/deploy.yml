@@ -8,26 +8,40 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and export image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up lower case repository name
+        run: |
+          echo "REPO=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
+      - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: .
-          tags: ubus-api:latest
-          outputs: type=docker,dest=/tmp/ubus-api.tar
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ env.REPO }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Compress image
-        run: |
-          gzip -9 /tmp/ubus-api.tar
-          mv /tmp/ubus-api.tar.gz ./ubus-api.tar.gz
-
       - name: Create deploy script and .env
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
@@ -40,7 +54,7 @@ jobs:
           echo "mkdir -p $DEPLOY_DIR" > prepare.sh
           
           {
-            echo "IMAGE=ubus-api:latest"
+            echo "IMAGE=ghcr.io/$REPO:latest"
             echo "DATABASE_URL=$DATABASE_URL"
             echo "REDIS_URL=redis://redis:6379"
             echo "REDIS_HOST=redis"
@@ -56,11 +70,11 @@ jobs:
           cd "$DEPLOY_DIR"
           mv -f .env.prod .env 2>/dev/null || true
           
-          echo "Loading new image..."
-          docker load -i ubus-api.tar.gz
+          echo "Pulling new image..."
+          export IMAGE="ghcr.io/$REPO:latest"
+          docker pull \$IMAGE
           
           echo "Deploying..."
-          export IMAGE="ubus-api:latest"
           docker compose -f docker-compose.prod.yml up -d --force-recreate
           
           sleep 5
@@ -87,7 +101,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: "docker-compose.prod.yml,.env.prod,nginx,ubus-api.tar.gz"
+          source: "docker-compose.prod.yml,.env.prod,nginx"
           target: ${{ secrets.DEPLOY_PATH || '~/ubus' }}
 
       - name: Deploy via SSH

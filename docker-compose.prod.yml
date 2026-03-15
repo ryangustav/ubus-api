@@ -2,24 +2,6 @@
 # Backend API, Postgres e Nginx
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: ubus-postgres
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-QQ485H7x0d2Ryi}
-      POSTGRES_DB: ubus
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ubus"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
     image: ${IMAGE:-ubus-api:latest}
     container_name: ubus-api
@@ -42,9 +24,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   nginx:
     image: nginx:alpine
@@ -54,6 +33,3 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/certs:/etc/nginx/certs:ro
-
-volumes:
-  postgres_data:

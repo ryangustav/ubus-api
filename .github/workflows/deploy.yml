@@ -1,4 +1,4 @@
-name: Deploy via OCIR e SSH
+name: Deploy via SSH
 
 on:
   push:
@@ -8,28 +8,38 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to OCIR
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to OCI Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ secrets.OCI_REGISTRY }}
           username: ${{ secrets.OCI_USERNAME }}
           password: ${{ secrets.OCI_AUTH_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up repository name
+        run: |
+          echo "REPO=${{ secrets.OCI_NAMESPACE }}/ubus-api" >> ${GITHUB_ENV}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: linux/arm64
           push: true
-          tags: ${{ secrets.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/ubus-api:latest
+          tags: ${{ secrets.OCI_REGISTRY }}/${{ env.REPO }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
       - name: Create deploy script and .env
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
@@ -37,13 +47,13 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           USE_OCI_VAULT: ${{ secrets.USE_OCI_VAULT }}
           OCI_SECRET_OCID: ${{ secrets.OCI_SECRET_OCID }}
-          IMAGE_TAG: ${{ secrets.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/ubus-api:latest
+          OCI_REGISTRY: ${{ secrets.OCI_REGISTRY }}
         run: |
           if [ -n "$DEPLOY_PATH" ]; then DEPLOY_DIR="$DEPLOY_PATH"; else DEPLOY_DIR='$HOME/ubus'; fi
           echo "mkdir -p $DEPLOY_DIR" > prepare.sh
           
           {
-            echo "IMAGE=$IMAGE_TAG"
+            echo "IMAGE=$OCI_REGISTRY/$REPO:latest"
             echo "DATABASE_URL=$DATABASE_URL"
             echo "REDIS_URL=redis://redis:6379"
             echo "REDIS_HOST=redis"
@@ -59,11 +69,11 @@ jobs:
           cd "$DEPLOY_DIR"
           mv -f .env.prod .env 2>/dev/null || true
           
-          echo "Pulling new image from OCIR..."
-          docker pull $IMAGE_TAG
+          echo "Pulling new image..."
+          export IMAGE="$OCI_REGISTRY/$REPO:latest"
+          docker pull \$IMAGE
           
           echo "Deploying..."
-          export IMAGE="$IMAGE_TAG"
           docker compose -f docker-compose.prod.yml up -d --force-recreate
           
           sleep 5

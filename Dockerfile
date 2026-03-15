@@ -1,4 +1,6 @@
-FROM node:20-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
+
+ARG TARGETPLATFORM
 
 WORKDIR /app
 
@@ -8,7 +10,7 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM --platform=$TARGETPLATFORM node:20-alpine AS runner
 
 WORKDIR /app
 

@@ -8,6 +8,7 @@ RUN npm ci --legacy-peer-deps
 
 COPY . .
 RUN npm run build
+RUN ls -R dist
 
 # Install production dependencies on the native platform as well
 RUN npm ci --omit=dev --legacy-peer-deps

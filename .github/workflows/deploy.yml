@@ -134,7 +134,7 @@ jobs:
             fi
 
             # Login to OCI Container Registry
-            echo "$OCI_AUTH_TOKEN" | docker login "$OCI_REGISTRY" -u "$OCI_USERNAME" --password-stdin
+            echo "$OCI_AUTH_TOKEN" | sudo docker login "$OCI_REGISTRY" -u "$OCI_USERNAME" --password-stdin
 
             # Source .env safely
             set -a
@@ -142,14 +142,14 @@ jobs:
             set +a
 
             echo "Pulling image: $IMAGE"
-            docker pull "$IMAGE"
+            sudo docker pull "$IMAGE"
 
             echo "Deploying..."
-            docker compose -f docker-compose.prod.yml up -d --force-recreate
+            sudo docker compose -f docker-compose.prod.yml up -d --force-recreate
 
             sleep 5
             echo "Running Drizzle Migrations..."
-            docker exec ubus-api npx drizzle-kit migrate --config=drizzle.config.js
+            sudo docker exec ubus-api npx drizzle-kit migrate --config=drizzle.config.js
 
-            docker image prune -f
+            sudo docker image prune -f
             echo "Deploy complete!"

@@ -12,7 +12,7 @@ import { DRIZZLE } from '../../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
 import { and, eq } from 'drizzle-orm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { loginSchema, LoginDto } from './dto/login.dto';
 import { registerSchema } from './dto/register.dto';

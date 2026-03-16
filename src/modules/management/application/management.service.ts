@@ -8,7 +8,7 @@ import { DRIZZLE } from '../../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
 import { and, eq } from 'drizzle-orm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 const SYSTEM_MUNICIPALITY_ID = '00000000-0000-0000-0000-000000000001';
 

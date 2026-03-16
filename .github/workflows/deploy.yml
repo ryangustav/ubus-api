@@ -47,6 +47,7 @@ jobs:
           USE_OCI_VAULT: ${{ secrets.USE_OCI_VAULT }}
           OCI_SECRET_OCID: ${{ secrets.OCI_SECRET_OCID }}
           OCI_REGISTRY: ${{ secrets.OCI_REGISTRY }}
+          REPO: ${{ env.REPO }}
         run: |
           {
             echo "IMAGE=$OCI_REGISTRY/$REPO:latest"
@@ -67,7 +68,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
-            mkdir -p ${{ secrets.DEPLOY_PATH || '~/ubus' }}
+            mkdir -p "${{ secrets.DEPLOY_PATH || 'ubus' }}"
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
@@ -77,7 +78,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           source: "docker-compose.prod.yml,.env.prod,nginx"
-          target: ${{ secrets.DEPLOY_PATH || '~/ubus' }}
+          target: ${{ secrets.DEPLOY_PATH || 'ubus' }}
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -94,26 +95,35 @@ jobs:
           envs: OCI_REGISTRY,OCI_USERNAME,OCI_AUTH_TOKEN,DEPLOY_PATH
           script: |
             set -e
-            # Resolve deployment directory safely
-            if [ -n "$DEPLOY_PATH" ]; then
-              # If DEPLOY_PATH starts with ~, expand it
-              DEPLOY_DIR="${DEPLOY_PATH/#\~/$HOME}"
-            else
-              DEPLOY_DIR="$HOME/ubus"
-            fi
+            # Unify directory resolution with SCP action (relative to home)
+            DEPLOY_DIR="${DEPLOY_PATH:-ubus}"
             
-            echo "Deploying to: $DEPLOY_DIR"
-            mkdir -p "$DEPLOY_DIR"
+            # If path starts with /, it's absolute, otherwise relative to $HOME
+            [[ "$DEPLOY_DIR" != /* ]] && DEPLOY_DIR="$HOME/$DEPLOY_DIR"
+            # Remove any literal "~/" if the secret was misconfigured
+            DEPLOY_DIR="${DEPLOY_DIR//\~\//}"
+            
+            echo "Target Directory: $DEPLOY_DIR"
             cd "$DEPLOY_DIR"
 
             # Rename .env.prod to .env
-            mv -f .env.prod .env 2>/dev/null || true
+            if [ -f .env.prod ]; then
+              mv -f .env.prod .env
+            fi
 
-            # Login to OCI Container Registry on the VM
+            if [ ! -f .env ]; then
+              echo "Error: .env file not found in $DEPLOY_DIR"
+              ls -la
+              exit 1
+            fi
+
+            # Login to OCI Container Registry
             echo "$OCI_AUTH_TOKEN" | docker login "$OCI_REGISTRY" -u "$OCI_USERNAME" --password-stdin
 
-            # Source .env to get IMAGE variable
-            export $(grep -v '^#' .env | xargs)
+            # Source .env safely
+            set -a
+            source .env
+            set +a
 
             echo "Pulling image: $IMAGE"
             docker pull "$IMAGE"

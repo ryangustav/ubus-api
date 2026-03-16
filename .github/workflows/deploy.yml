@@ -68,7 +68,20 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
-            mkdir -p "${{ secrets.DEPLOY_PATH || 'ubus-api' }}"
+            # Resolve path safely even if user put ~ in secret
+            RAW_PATH="${{ secrets.DEPLOY_PATH || 'ubus-api' }}"
+            # Remove leading ~/ or / to avoid concatenation issues
+            CLEAN_PATH="${RAW_PATH#\~/}"
+            CLEAN_PATH="${CLEAN_PATH#/}"
+            
+            DEPLOY_ROOT="/home/${{ secrets.DEPLOY_USER }}"
+            TARGET_DIR="$DEPLOY_ROOT/$CLEAN_PATH"
+            
+            echo "Creating directory: $TARGET_DIR"
+            mkdir -p "$TARGET_DIR"
+            
+            # Clean up previous error (literal $HOME or ~ folders)
+            rm -rf "$DEPLOY_ROOT/\$HOME" "$DEPLOY_ROOT/~" 2>/dev/null || true
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
@@ -78,6 +91,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           source: "docker-compose.prod.yml,.env.prod,nginx"
+          # Pass the raw path, SCP handles ~/ usually, but ubus-api is safer
           target: ${{ secrets.DEPLOY_PATH || 'ubus-api' }}
 
       - name: Deploy via SSH
@@ -87,30 +101,24 @@ jobs:
           OCI_USERNAME: ${{ secrets.OCI_USERNAME }}
           OCI_AUTH_TOKEN: ${{ secrets.OCI_AUTH_TOKEN }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: OCI_REGISTRY,OCI_USERNAME,OCI_AUTH_TOKEN,DEPLOY_PATH
+          envs: OCI_REGISTRY,OCI_USERNAME,OCI_AUTH_TOKEN,DEPLOY_PATH,DEPLOY_USER
           script: |
             set -e
-            # Unify directory resolution (relative to home by default)
-            TARGET_DIR="${DEPLOY_PATH:-ubus-api}"
+            # Resolve absolute path safely
+            RAW_PATH="${DEPLOY_PATH:-ubus-api}"
+            CLEAN_PATH="${RAW_PATH#\~/}"
+            CLEAN_PATH="${CLEAN_PATH#/}"
             
-            # Resolve absolute path
-            [[ "$TARGET_DIR" != /* ]] && TARGET_DIR="$HOME/$TARGET_DIR"
-            TARGET_DIR="${TARGET_DIR//\~\//}"
+            TARGET_DIR="/home/$DEPLOY_USER/$CLEAN_PATH"
             
             echo "Target Directory: $TARGET_DIR"
-            mkdir -p "$TARGET_DIR"
             cd "$TARGET_DIR"
-
-            # Check if files landed one level up or in a subfolder (common scp behavior)
-            if [ ! -f .env.prod ] && [ -f ../.env.prod ]; then
-              echo "Files found in parent directory, moving them here..."
-              mv ../.env.prod ../docker-compose.prod.yml ../nginx . 2>/dev/null || true
-            fi
 
             # Rename .env.prod to .env
             if [ -f .env.prod ]; then
@@ -119,9 +127,8 @@ jobs:
 
             if [ ! -f .env ]; then
               echo "FATAL: .env not found in $TARGET_DIR"
-              echo "Current directory content:"
               ls -la
-              echo "Parent directory content:"
+              echo "Checking parent directory..."
               ls -la ..
               exit 1
             fi

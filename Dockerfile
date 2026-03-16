@@ -11,6 +11,10 @@ COPY . .
 RUN npm run build
 RUN echo "=== Build output ===" && ls dist/
 
+# Fetch the ARM64 binary even though we are on x64, so it's available in the final image
+# This is required for drizzle-kit (esbuild) to work on the target ARM64 architecture
+RUN npm install @esbuild/linux-arm64 --legacy-peer-deps --no-save
+
 # Target stage for the final image (ARM64)
 FROM node:20-alpine AS runner
 

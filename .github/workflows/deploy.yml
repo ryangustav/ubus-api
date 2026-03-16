@@ -40,18 +40,14 @@ jobs:
           tags: ${{ secrets.OCI_REGISTRY }}/${{ env.REPO }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Create deploy script and .env
+      - name: Create .env file
         env:
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           USE_OCI_VAULT: ${{ secrets.USE_OCI_VAULT }}
           OCI_SECRET_OCID: ${{ secrets.OCI_SECRET_OCID }}
           OCI_REGISTRY: ${{ secrets.OCI_REGISTRY }}
         run: |
-          if [ -n "$DEPLOY_PATH" ]; then DEPLOY_DIR="$DEPLOY_PATH"; else DEPLOY_DIR='$HOME/ubus'; fi
-          echo "mkdir -p $DEPLOY_DIR" > prepare.sh
-          
           {
             echo "IMAGE=$OCI_REGISTRY/$REPO:latest"
             echo "DATABASE_URL=$DATABASE_URL"
@@ -62,27 +58,6 @@ jobs:
             echo "USE_OCI_VAULT=$USE_OCI_VAULT"
             echo "OCI_SECRET_OCID=$OCI_SECRET_OCID"
           } > .env.prod
-          
-          cat > deploy.sh << SCRIPT
-          #!/bin/bash
-          set -e
-          cd "$DEPLOY_DIR"
-          mv -f .env.prod .env 2>/dev/null || true
-          
-          echo "Pulling new image..."
-          export IMAGE="$OCI_REGISTRY/$REPO:latest"
-          docker pull \$IMAGE
-          
-          echo "Deploying..."
-          docker compose -f docker-compose.prod.yml up -d --force-recreate
-          
-          sleep 5
-          echo "Running Drizzle Migrations..."
-          docker exec ubus-api npx drizzle-kit migrate --config=drizzle.config.js
-          
-          docker image prune -f
-          SCRIPT
-          chmod +x deploy.sh prepare.sh
 
       - name: Prepare deploy directory
         uses: appleboy/ssh-action@v1.0.3
@@ -91,7 +66,8 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          script_path: prepare.sh
+          script: |
+            mkdir -p ${{ secrets.DEPLOY_PATH || '~/ubus' }}
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
@@ -105,9 +81,40 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          OCI_REGISTRY: ${{ secrets.OCI_REGISTRY }}
+          OCI_USERNAME: ${{ secrets.OCI_USERNAME }}
+          OCI_AUTH_TOKEN: ${{ secrets.OCI_AUTH_TOKEN }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          script_path: deploy.sh
+          envs: OCI_REGISTRY,OCI_USERNAME,OCI_AUTH_TOKEN,DEPLOY_PATH
+          script: |
+            set -e
+            DEPLOY_DIR="${DEPLOY_PATH:-$HOME/ubus}"
+            cd "$DEPLOY_DIR"
+
+            # Rename .env.prod to .env
+            mv -f .env.prod .env 2>/dev/null || true
+
+            # Login to OCI Container Registry on the VM
+            echo "$OCI_AUTH_TOKEN" | docker login "$OCI_REGISTRY" -u "$OCI_USERNAME" --password-stdin
+
+            # Source .env to get IMAGE variable
+            export $(grep -v '^#' .env | xargs)
+
+            echo "Pulling image: $IMAGE"
+            docker pull "$IMAGE"
+
+            echo "Deploying..."
+            docker compose -f docker-compose.prod.yml up -d --force-recreate
+
+            sleep 5
+            echo "Running Drizzle Migrations..."
+            docker exec ubus-api npx drizzle-kit migrate --config=drizzle.config.js
+
+            docker image prune -f
+            echo "Deploy complete!"

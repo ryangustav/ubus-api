@@ -1,4 +1,5 @@
-FROM node:20-alpine AS builder
+# Builder stage runs on the native architecture of the runner (x86_64)
+FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -8,9 +9,10 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 RUN npm run build
 
-# Install production dependencies on the native platform
+# Install production dependencies on the native platform as well
 RUN npm ci --omit=dev --legacy-peer-deps
 
+# Target stage for the final image (ARM64)
 FROM node:20-alpine AS runner
 
 WORKDIR /app

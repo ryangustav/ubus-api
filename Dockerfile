@@ -31,6 +31,7 @@ RUN npm rebuild esbuild 2>/dev/null || true
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/drizzle.config.js ./
+RUN echo "=== Drizzle directory ===" && ls -R drizzle/
 
 EXPOSE 3001
 

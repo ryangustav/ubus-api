@@ -68,7 +68,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
-            mkdir -p "${{ secrets.DEPLOY_PATH || 'ubus' }}"
+            mkdir -p "${{ secrets.DEPLOY_PATH || 'ubus-api' }}"
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
@@ -78,7 +78,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           source: "docker-compose.prod.yml,.env.prod,nginx"
-          target: ${{ secrets.DEPLOY_PATH || 'ubus' }}
+          target: ${{ secrets.DEPLOY_PATH || 'ubus-api' }}
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -95,16 +95,22 @@ jobs:
           envs: OCI_REGISTRY,OCI_USERNAME,OCI_AUTH_TOKEN,DEPLOY_PATH
           script: |
             set -e
-            # Unify directory resolution with SCP action (relative to home)
-            DEPLOY_DIR="${DEPLOY_PATH:-ubus}"
+            # Unify directory resolution (relative to home by default)
+            TARGET_DIR="${DEPLOY_PATH:-ubus-api}"
             
-            # If path starts with /, it's absolute, otherwise relative to $HOME
-            [[ "$DEPLOY_DIR" != /* ]] && DEPLOY_DIR="$HOME/$DEPLOY_DIR"
-            # Remove any literal "~/" if the secret was misconfigured
-            DEPLOY_DIR="${DEPLOY_DIR//\~\//}"
+            # Resolve absolute path
+            [[ "$TARGET_DIR" != /* ]] && TARGET_DIR="$HOME/$TARGET_DIR"
+            TARGET_DIR="${TARGET_DIR//\~\//}"
             
-            echo "Target Directory: $DEPLOY_DIR"
-            cd "$DEPLOY_DIR"
+            echo "Target Directory: $TARGET_DIR"
+            mkdir -p "$TARGET_DIR"
+            cd "$TARGET_DIR"
+
+            # Check if files landed one level up or in a subfolder (common scp behavior)
+            if [ ! -f .env.prod ] && [ -f ../.env.prod ]; then
+              echo "Files found in parent directory, moving them here..."
+              mv ../.env.prod ../docker-compose.prod.yml ../nginx . 2>/dev/null || true
+            fi
 
             # Rename .env.prod to .env
             if [ -f .env.prod ]; then
@@ -112,8 +118,11 @@ jobs:
             fi
 
             if [ ! -f .env ]; then
-              echo "Error: .env file not found in $DEPLOY_DIR"
+              echo "FATAL: .env not found in $TARGET_DIR"
+              echo "Current directory content:"
               ls -la
+              echo "Parent directory content:"
+              ls -la ..
               exit 1
             fi
 

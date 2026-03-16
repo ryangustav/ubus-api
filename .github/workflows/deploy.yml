@@ -47,14 +47,15 @@ jobs:
           USE_OCI_VAULT: ${{ secrets.USE_OCI_VAULT }}
           OCI_SECRET_OCID: ${{ secrets.OCI_SECRET_OCID }}
           OCI_REGISTRY: ${{ secrets.OCI_REGISTRY }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
           REPO: ${{ env.REPO }}
         run: |
           {
             echo "IMAGE=$OCI_REGISTRY/$REPO:latest"
-            echo "DATABASE_URL=$DATABASE_URL"
-            echo "REDIS_URL=redis://redis:6379"
-            echo "REDIS_HOST=redis"
-            echo "REDIS_PORT=6379"
+            [ -z "$DATABASE_URL" ] || echo "DATABASE_URL=$DATABASE_URL"
+            [ -z "$REDIS_URL" ] || echo "REDIS_URL=$REDIS_URL"
+            [ -z "$REDIS_HOST" ] || echo "REDIS_HOST=$REDIS_HOST"
             echo "JWT_SECRET=$JWT_SECRET"
             echo "USE_OCI_VAULT=$USE_OCI_VAULT"
             echo "OCI_SECRET_OCID=$OCI_SECRET_OCID"
@@ -147,7 +148,25 @@ jobs:
             echo "Deploying..."
             sudo docker compose -f docker-compose.prod.yml up -d --force-recreate
 
-            sleep 5
+            echo "Waiting for container to be ready..."
+            for i in {1..12}; do
+              STATUS=$(sudo docker inspect -f '{{.State.Status}}' ubus-api 2>/dev/null || echo "not_found")
+              if [ "$STATUS" == "running" ]; then
+                HEALTH=$(sudo docker inspect -f '{{.State.Health.Status}}' ubus-api 2>/dev/null || echo "ignored")
+                if [ "$HEALTH" == "healthy" ] || [ "$HEALTH" == "ignored" ]; then
+                  echo "Container is running and healthy!"
+                  break
+                fi
+              fi
+              echo "Status: $STATUS ($HEALTH). Waiting... ($i/12)"
+              if [ "$i" -eq 12 ]; then
+                echo "FATAL: Container failed to start properly. Printing logs:"
+                sudo docker logs ubus-api --tail 100
+                exit 1
+              fi
+              sleep 5
+            done
+
             echo "Running Drizzle Migrations..."
             sudo docker exec ubus-api npx drizzle-kit migrate --config=drizzle.config.js
 

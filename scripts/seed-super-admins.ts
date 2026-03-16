@@ -21,7 +21,7 @@ if (fs.existsSync(envPath)) {
 }
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import * as schema from '../src/shared/database/schema';
 

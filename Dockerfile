@@ -31,6 +31,21 @@ RUN npm rebuild esbuild 2>/dev/null || true
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/drizzle.config.js ./
+
+# Ensure drizzle meta/_journal.json exists (required by drizzle-kit migrate)
+RUN mkdir -p drizzle/meta && cat > drizzle/meta/_journal.json << 'JOURNAL'
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {"idx": 0, "version": "7", "when": 1700000000000, "tag": "0000_aromatic_thing", "breakpoints": true},
+    {"idx": 1, "version": "7", "when": 1700000001000, "tag": "0001_powerful_freak", "breakpoints": true},
+    {"idx": 2, "version": "7", "when": 1700000002000, "tag": "0001_indexes", "breakpoints": true},
+    {"idx": 3, "version": "7", "when": 1700000003000, "tag": "0002_good_carmella_unuscione", "breakpoints": true},
+    {"idx": 4, "version": "7", "when": 1700000004000, "tag": "0003_flashy_dreadnoughts", "breakpoints": true}
+  ]
+}
+JOURNAL
 RUN echo "=== Drizzle directory ===" && ls -R drizzle/
 
 EXPOSE 3001

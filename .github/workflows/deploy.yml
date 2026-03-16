@@ -168,6 +168,9 @@ jobs:
             done
 
             echo "Running Drizzle Migrations..."
+            echo "=== Checking drizzle dir in container ==="
+            sudo docker exec ubus-api ls -R /app/drizzle/ || echo "drizzle directory not found!"
+            echo "=== End drizzle check ==="
             sudo docker exec ubus-api npx drizzle-kit migrate --config=drizzle.config.js
 
             sudo docker image prune -f

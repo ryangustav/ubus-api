@@ -94,7 +94,16 @@ jobs:
           envs: OCI_REGISTRY,OCI_USERNAME,OCI_AUTH_TOKEN,DEPLOY_PATH
           script: |
             set -e
-            DEPLOY_DIR="${DEPLOY_PATH:-$HOME/ubus}"
+            # Resolve deployment directory safely
+            if [ -n "$DEPLOY_PATH" ]; then
+              # If DEPLOY_PATH starts with ~, expand it
+              DEPLOY_DIR="${DEPLOY_PATH/#\~/$HOME}"
+            else
+              DEPLOY_DIR="$HOME/ubus"
+            fi
+            
+            echo "Deploying to: $DEPLOY_DIR"
+            mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
 
             # Rename .env.prod to .env

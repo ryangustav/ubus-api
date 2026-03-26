@@ -3,8 +3,10 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { loadOciSecrets } from './config/oci-vault';
+import * as dotenv from 'dotenv';
 
 async function bootstrap() {
+  dotenv.config();
   await loadOciSecrets();
   const app = await NestFactory.create(AppModule);
 

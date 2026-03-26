@@ -2,8 +2,10 @@ import * as common from 'oci-common';
 import * as secrets from 'oci-secrets';
 
 export async function loadOciSecrets(): Promise<void> {
-  // If USE_OCI_VAULT is not explicitly enabled, skip loading from OCI Vault
-  if (process.env.USE_OCI_VAULT !== 'true') {
+  const isOciUsed = process.env.USE_OCI_VAULT === 'true';
+
+  if (!isOciUsed) {
+    console.log('ℹ️  OCI Vault is disabled (USE_OCI_VAULT != true).');
     return;
   }
 
@@ -16,7 +18,7 @@ export async function loadOciSecrets(): Promise<void> {
   }
 
   try {
-    console.log('🔄  Loading secrets from OCI Vault...');
+    console.log('🔄  Connecting to OCI Vault to fetch secrets...');
     let provider: common.AuthenticationDetailsProvider;
     try {
       // First attempt: local config file (~/.oci/config)
@@ -34,6 +36,7 @@ export async function loadOciSecrets(): Promise<void> {
       authenticationDetailsProvider: provider,
     });
 
+    console.log(`🔄  Fetching secret bundle from OCID: ${secretOcid}...`);
     const response = await client.getSecretBundle({
       secretId: secretOcid,
     });
@@ -44,39 +47,47 @@ export async function loadOciSecrets(): Promise<void> {
       content?: string;
     };
 
-    if (
-      bundleContent &&
-      bundleContent.contentType === 'BASE64' &&
-      bundleContent.content
-    ) {
-      const base64Str = bundleContent.content;
-      const decodedStr = Buffer.from(base64Str, 'base64').toString('utf-8');
-
-      let parsedSecrets: Record<string, string>;
-      try {
-        parsedSecrets = JSON.parse(decodedStr) as Record<string, string>;
-      } catch (err) {
-        console.error('❌  Failed to parse OCI Secret content as JSON.');
-        throw err;
-      }
-
-      // Inject the parsed secrets into process.env
-      for (const [key, value] of Object.entries(parsedSecrets)) {
-        // We only overwrite if not already defined locally, or we deliberately overwrite it.
-        // Usually, the Vault should be the source of truth if USE_OCI_VAULT is true.
-        process.env[key] = value;
-      }
-
-      console.log('✅  Successfully loaded and mapped secrets from OCI Vault.');
-    } else {
-      console.warn(
-        '⚠️  OCI Secret content type is not BASE64. Cannot parse the secret.',
-      );
+    if (!bundleContent || !bundleContent.content) {
+      console.error('❌  OCI Secret bundle is empty or invalid.');
+      return;
     }
+
+    const contentType = bundleContent.contentType || 'BASE64';
+    console.log(`🔄  Processing secret bundle. Content Type: ${contentType}`);
+
+    let decodedStr: string;
+    if (contentType === 'BASE64') {
+      decodedStr = Buffer.from(bundleContent.content, 'base64').toString('utf-8');
+    } else if (contentType === 'PLAIN') {
+      decodedStr = bundleContent.content;
+    } else {
+      console.warn(`⚠️  Unsupported OCI Secret content type: ${contentType}. Trying to treat as RAW.`);
+      decodedStr = bundleContent.content;
+    }
+
+    // Trim content to avoid parsing errors
+    decodedStr = decodedStr.trim();
+
+    let parsedSecrets: Record<string, string>;
+    try {
+      parsedSecrets = JSON.parse(decodedStr) as Record<string, string>;
+    } catch (err) {
+      console.error('❌  Failed to parse OCI Secret content as JSON. Content preview (first 50 chars):', decodedStr.substring(0, 50));
+      throw err;
+    }
+
+    // Inject the parsed secrets into process.env
+    const keysLoaded: string[] = [];
+    for (const [key, value] of Object.entries(parsedSecrets)) {
+      process.env[key] = String(value);
+      keysLoaded.push(key);
+    }
+
+    console.log(`✅  Successfully loaded ${keysLoaded.length} secrets from OCI Vault.`);
+    console.log(`Keys: [${keysLoaded.join(', ')}]`);
   } catch (error) {
     console.error('❌  Error fetching secrets from OCI Vault:', error);
-    // Depending on requirements, we could throw here to crash the app if secrets are mandatory.
-    // For now, we throw, to avoid starting with invalid configurations.
+    // Crash the app if vault loading fails but is explicitly ENABLED
     throw error;
   }
 }

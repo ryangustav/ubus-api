@@ -10,6 +10,9 @@ import { ConfigService } from '@nestjs/config';
       useFactory: (config: ConfigService) => ({
         type: 'single',
         url: config.get<string>('REDIS_URL', 'redis://localhost:6379'),
+        options: {
+          password: config.get<string>('REDIS_PASSWORD'),
+        },
       }),
     }),
   ],

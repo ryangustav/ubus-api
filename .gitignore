@@ -43,3 +43,5 @@ scripts/super-admin-credentials.txt
 .env.prod
 deploy.sh
 prepare.sh
+
+# Planning

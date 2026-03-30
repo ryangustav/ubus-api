@@ -1,5 +1,6 @@
-# Builder stage runs on the native architecture of the runner (x86_64)
-# Only used for TypeScript compilation (nest build)
+# ── Stage 1: Builder ──────────────────────────────────────────────
+# Runs on the NATIVE architecture of the CI runner (x86_64 on GitHub Actions)
+# Used for TypeScript compilation (nest build)
 FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
 
 WORKDIR /app
@@ -11,7 +12,20 @@ COPY . .
 RUN npm run build
 RUN echo "=== Build output ===" && ls dist/
 
-# Target stage for the final image (ARM64)
+# ── Stage 2: Prod Dependencies ───────────────────────────────────
+# Also runs NATIVELY on x86_64 — avoids QEMU emulation entirely.
+# All deps in this project are pure JavaScript (no native C++ addons),
+# so node_modules built on x86 works identically on ARM64.
+FROM --platform=$BUILDPLATFORM node:20-alpine AS prod-deps
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev --legacy-peer-deps --ignore-scripts
+
+# ── Stage 3: Runner (ARM64 target) ───────────────────────────────
+# This stage does NOT run npm at all — only copies pre-built artifacts.
+# No QEMU emulation of npm/node-gyp, so no "Illegal instruction" crashes.
 FROM node:20-alpine AS runner
 
 WORKDIR /app
@@ -19,13 +33,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# Copy package files first, then install prod deps NATIVELY on ARM64
-# --ignore-scripts avoids running postinstall scripts that might crash under QEMU
-COPY --from=builder /app/package*.json ./
-RUN npm ci --omit=dev --legacy-peer-deps --ignore-scripts
-
-# Rebuild esbuild specifically so it downloads the correct ARM64 binary
-RUN npm rebuild esbuild 2>/dev/null || true
+# Copy prod-only node_modules (built natively on x86, pure JS = arch-agnostic)
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/package.json ./
 
 # Copy build artifacts from builder
 COPY --from=builder /app/dist ./dist

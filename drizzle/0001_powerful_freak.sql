@@ -46,7 +46,9 @@ ALTER TABLE "onibus" ADD CONSTRAINT "uq_onibus_numero_prefeitura" UNIQUE("id_pre
 ALTER TABLE "onibus" ADD CONSTRAINT "uq_onibus_placa_prefeitura" UNIQUE("id_prefeitura","placa");--> statement-breakpoint
 ALTER TABLE "usuarios" ADD CONSTRAINT "uq_usuario_cpf_prefeitura" UNIQUE("id_prefeitura","cpf");--> statement-breakpoint
 ALTER TABLE "usuarios" ADD CONSTRAINT "uq_usuario_email_prefeitura" UNIQUE("id_prefeitura","email");--> statement-breakpoint
+ALTER TABLE "public"."usuarios" ALTER COLUMN "role" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "public"."usuarios" ALTER COLUMN "role" SET DATA TYPE text;--> statement-breakpoint
 DROP TYPE "public"."role_usuario";--> statement-breakpoint
 CREATE TYPE "public"."role_usuario" AS ENUM('GESTOR', 'MOTORISTA', 'LIDER', 'ALUNO', 'CARONISTA');--> statement-breakpoint
-ALTER TABLE "public"."usuarios" ALTER COLUMN "role" SET DATA TYPE "public"."role_usuario" USING "role"::"public"."role_usuario";
+ALTER TABLE "public"."usuarios" ALTER COLUMN "role" SET DATA TYPE "public"."role_usuario" USING "role"::"public"."role_usuario";--> statement-breakpoint
+ALTER TABLE "public"."usuarios" ALTER COLUMN "role" SET DEFAULT 'ALUNO';

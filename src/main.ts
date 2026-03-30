@@ -9,6 +9,7 @@ async function bootstrap() {
   dotenv.config();
   await loadOciSecrets();
   const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix('api/v1');
 
   const config = new DocumentBuilder()
     .setTitle('UBUS API')
@@ -26,11 +27,11 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api/v1/docs', app, document);
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
-  console.log(`UBUS API running on http://localhost:${port}`);
-  console.log(`Swagger: http://localhost:${port}/api`);
+  console.log(`UBUS API running on http://localhost:${port}/api/v1`);
+  console.log(`Swagger Docs: http://localhost:${port}/api/v1/docs`);
 }
 void bootstrap();

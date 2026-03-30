@@ -7,16 +7,15 @@ services:
     container_name: ubus-api
     restart: unless-stopped
     network_mode: "host"
+    volumes:
+      - ./.env:/app/.env:ro
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:QQ485H7x0d2Ryi@localhost:5432/ubus}
-      REDIS_URL: ${REDIS_URL:-redis://:9L75fhb7v35FDh@10.0.0.67:6379}
-      REDIS_HOST: ${REDIS_HOST:-10.0.0.67}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-9L75fhb7v35FDh}
-      JWT_SECRET: ${JWT_SECRET:-ixcrMtgaxDcXx4UoGoHgDyBvKJ6Bs4ve4qgoa+82awC+RQtiZKuGTLnkPJVsF6gYxFU3N3oA2wDvx6I6mONawg==}
-      USE_OCI_VAULT: "true"
+      # IMAGE comes from the shell environment (sourced from .env before up)
+      IMAGE: ${IMAGE}
+      # Minimal variables - most are now loaded from /app/.env by the app
+      USE_OCI_VAULT: ${USE_OCI_VAULT:-true}
       OCI_SECRET_OCID: ${OCI_SECRET_OCID}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api"]

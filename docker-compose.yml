@@ -34,15 +34,17 @@ services:
     container_name: ubus-api
     ports:
       - "3001:3001"
+    volumes:
+      - ./.env:/app/.env:ro
     environment:
-      DATABASE_URL: mongodb://ubus:ubus@mongodb:27017/ubus?authSource=admin
-      REDIS_URL: redis://redis:6379
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      DATABASE_URL: ${DATABASE_URL:-mongodb://ubus:ubus@mongodb:27017/ubus?authSource=admin}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
       JWT_SECRET: ${JWT_SECRET:-ubus-secret-change-in-prod}
       PORT: 3001
       USE_OCI_VAULT: ${USE_OCI_VAULT:-false}
-      OCI_SECRET_OCID: ${OCI_SECRET_OCID:-}
+      OCI_SECRET_OCID: ${OCI_SECRET_OCID}
     depends_on:
       mongodb:
         condition: service_healthy

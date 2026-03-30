@@ -49,15 +49,21 @@ jobs:
           OCI_REGISTRY: ${{ secrets.OCI_REGISTRY }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
           REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           REPO: ${{ env.REPO }}
         run: |
           {
             echo "IMAGE=$OCI_REGISTRY/$REPO:latest"
+            echo "PORT=3001"
+            echo "NODE_ENV=production"
             [ -z "$DATABASE_URL" ] || echo "DATABASE_URL=$DATABASE_URL"
             [ -z "$REDIS_URL" ] || echo "REDIS_URL=$REDIS_URL"
             [ -z "$REDIS_HOST" ] || echo "REDIS_HOST=$REDIS_HOST"
+            [ -z "$REDIS_PORT" ] || echo "REDIS_PORT=$REDIS_PORT"
+            [ -z "$REDIS_PASSWORD" ] || echo "REDIS_PASSWORD=$REDIS_PASSWORD"
             echo "JWT_SECRET=$JWT_SECRET"
-            echo "USE_OCI_VAULT=$USE_OCI_VAULT"
+            echo "USE_OCI_VAULT=${USE_OCI_VAULT:-true}"
             echo "OCI_SECRET_OCID=$OCI_SECRET_OCID"
           } > .env.prod
 
@@ -124,13 +130,12 @@ jobs:
             # Rename .env.prod to .env
             if [ -f .env.prod ]; then
               mv -f .env.prod .env
+              chmod 600 .env
             fi
 
             if [ ! -f .env ]; then
               echo "FATAL: .env not found in $TARGET_DIR"
               ls -la
-              echo "Checking parent directory..."
-              ls -la ..
               exit 1
             fi
 

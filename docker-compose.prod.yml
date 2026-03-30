@@ -1,11 +1,12 @@
 # Produção - Oracle Cloud
-# Backend API e Nginx (rede Docker bridge com DNS interno)
+# Backend API, Postgres e Nginx
 
 services:
   api:
     image: ${IMAGE:-ubus-api:latest}
     container_name: ubus-api
     restart: unless-stopped
+    network_mode: "host"
     volumes:
       - ./.env:/app/.env:ro
     environment:
@@ -20,28 +21,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - ubus-net
 
   nginx:
     image: nginx:alpine
     container_name: ubus-nginx
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
+    network_mode: "host"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/certs:/etc/nginx/certs:ro
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - ubus-net
-
-networks:
-  ubus-net:
-    driver: bridge
-

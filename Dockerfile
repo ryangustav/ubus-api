@@ -25,7 +25,7 @@ RUN npm ci --omit=dev --legacy-peer-deps --ignore-scripts \
     # drizzle-kit uses esbuild (native binary). npm installed the x86 version,
     # but the final image runs on ARM64 (Oracle Ampere). Swap the binary:
     && rm -rf node_modules/@esbuild/linux-x64 \
-    && npm install --no-save @esbuild/linux-arm64
+    && npm install --no-save --legacy-peer-deps @esbuild/linux-arm64
 
 # ── Stage 3: Runner (ARM64 target) ───────────────────────────────
 # This stage does NOT run npm at all — only copies pre-built artifacts.

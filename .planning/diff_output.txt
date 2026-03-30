@@ -1,0 +1,79 @@
+﻿diff --git a/.gitignore b/.gitignore
+index 3fc871a..306c91d 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -43,3 +43,5 @@ scripts/super-admin-credentials.txt
+ .env.prod
+ deploy.sh
+ prepare.sh
++
++# Planning
+\ No newline at end of file
+diff --git a/nginx/conf.d/default.conf b/nginx/conf.d/default.conf
+index e85830e..328e512 100644
+--- a/nginx/conf.d/default.conf
++++ b/nginx/conf.d/default.conf
+@@ -2,9 +2,9 @@
+ # resolver: DNS do Docker (evita cache que causa 502)
+ server {
+     listen 80;
+-    server_name _;
++    server_name api.ubus.me;
+     location / {
+-        set $upstream http://127.0.0.1:3001;
++        set $upstream http://ubus-api:3001;
+         proxy_pass $upstream;
+         proxy_http_version 1.1;
+         proxy_set_header Host $host;
+diff --git a/scripts/setup-ssl.sh b/scripts/setup-ssl.sh
+new file mode 100644
+index 0000000..4b171d2
+--- /dev/null
++++ b/scripts/setup-ssl.sh
+@@ -0,0 +1,19 @@
++#!/bin/bash
++# Script para configurar SSL via Certbot no Oracle Cloud (api.ubus.me)
++
++# 1. Instalar Certbot se n├úo presente
++if ! command -v certbot &> /dev/null
++then
++    echo "Instalando Certbot..."
++    sudo apt update
++    sudo apt install certbot python3-certbot-nginx -y
++fi
++
++# 2. Obter certificado (Desafio HTTP-01)
++# O dom├¡nio deve estar apontado para o IP p├║blico 163.176.165.51
++echo "Solicitando certificado para api.ubus.me..."
++sudo certbot --nginx -d api.ubus.me --non-interactive --agree-tos --email ryan@ubus.me
++
++# 3. Testar Renova├º├úo Autom├ítica
++echo "Testando renova├º├úo autom├ítica..."
++sudo certbot renew --dry-run
+diff --git a/src/main.ts b/src/main.ts
+index 43e196b..b4f289c 100644
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -9,6 +9,7 @@ async function bootstrap() {
+   dotenv.config();
+   await loadOciSecrets();
+   const app = await NestFactory.create(AppModule);
++  app.setGlobalPrefix('api/v1');
+ 
+   const config = new DocumentBuilder()
+     .setTitle('UBUS API')
+@@ -26,11 +27,11 @@ async function bootstrap() {
+     .build();
+ 
+   const document = SwaggerModule.createDocument(app, config);
+-  SwaggerModule.setup('api', app, document);
++  SwaggerModule.setup('api/v1/docs', app, document);
+ 
+   const port = process.env.PORT ?? 3001;
+   await app.listen(port);
+-  console.log(`UBUS API running on http://localhost:${port}`);
+-  console.log(`Swagger: http://localhost:${port}/api`);
++  console.log(`UBUS API running on http://localhost:${port}/api/v1`);
++  console.log(`Swagger Docs: http://localhost:${port}/api/v1/docs`);
+ }
+ void bootstrap();

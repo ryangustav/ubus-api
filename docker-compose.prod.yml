@@ -1,20 +1,17 @@
 # Produção - Oracle Cloud
-# Backend API, Postgres e Nginx
+# Backend API e Nginx (rede Docker bridge com DNS interno)
 
 services:
   api:
     image: ${IMAGE:-ubus-api:latest}
     container_name: ubus-api
     restart: unless-stopped
-    network_mode: "host"
     volumes:
       - ./.env:/app/.env:ro
     environment:
       NODE_ENV: production
       PORT: 3001
-      # IMAGE comes from the shell environment (sourced from .env before up)
       IMAGE: ${IMAGE}
-      # Minimal variables - most are now loaded from /app/.env by the app
       USE_OCI_VAULT: ${USE_OCI_VAULT:-true}
       OCI_SECRET_OCID: ${OCI_SECRET_OCID}
     healthcheck:
@@ -23,12 +20,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - ubus-net
 
   nginx:
     image: nginx:alpine
     container_name: ubus-nginx
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - ubus-net
+
+networks:
+  ubus-net:
+    driver: bridge
+

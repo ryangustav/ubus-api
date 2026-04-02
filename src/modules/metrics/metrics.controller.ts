@@ -16,7 +16,7 @@ export class MetricsController {
 
   @Get('dashboard')
   @UseGuards(RolesGuard)
-  @Roles('GESTOR', 'SUPER_ADMIN')
+  @Roles('MANAGER', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Dashboard KPIs for manager' })
   getDashboard(@CurrentUser() user: JwtPayload) {
     return this.metrics.getDashboard(user.municipalityId);

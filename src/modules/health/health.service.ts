@@ -4,7 +4,7 @@ import type Redis from 'ioredis';
 import { DRIZZLE } from '../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../shared/database/schema';
-import { prefeituras } from '../../shared/database/schema/prefeitura.schema';
+import { municipalities } from '../../shared/database/schema/municipality.schema';
 import { sql } from 'drizzle-orm';
 import type { HealthQueryDto } from './health.dto';
 
@@ -68,7 +68,7 @@ export class HealthService {
       for (let i = 0; i < iterations; i++) {
         const rows = await this.db
           .select({ count: sql<number>`count(*)::int` })
-          .from(prefeituras);
+          .from(municipalities);
         rowCount = Number(rows[0]?.count ?? 0);
         if (delayMs > 0) await this.sleep(delayMs);
       }

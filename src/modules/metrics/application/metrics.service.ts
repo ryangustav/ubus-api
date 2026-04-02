@@ -15,12 +15,12 @@ export class MetricsService {
       .select({
         count: sql<number>`count(*)::int`,
       })
-      .from(schema.usuarios)
+      .from(schema.users)
       .where(
         and(
-          eq(schema.usuarios.idPrefeitura, municipalityId),
-          eq(schema.usuarios.role, 'ALUNO'),
-          eq(schema.usuarios.statusCadastro, 'APROVADO'),
+          eq(schema.users.municipalityId, municipalityId),
+          eq(schema.users.role, 'STUDENT'),
+          eq(schema.users.registrationStatus, 'APPROVED'),
         ),
       );
 
@@ -28,15 +28,15 @@ export class MetricsService {
       .select({
         count: sql<number>`count(*)::int`,
       })
-      .from(schema.viagens)
+      .from(schema.trips)
       .innerJoin(
-        schema.linhas,
-        eq(schema.viagens.idLinha, schema.linhas.id),
+        schema.routes,
+        eq(schema.trips.routeId, schema.routes.id),
       )
       .where(
         and(
-          eq(schema.linhas.idPrefeitura, municipalityId),
-          eq(schema.viagens.dataViagem, today),
+          eq(schema.routes.municipalityId, municipalityId),
+          eq(schema.trips.tripDate, today),
         ),
       );
 
@@ -44,11 +44,11 @@ export class MetricsService {
       .select({
         count: sql<number>`count(*)::int`,
       })
-      .from(schema.usuarios)
+      .from(schema.users)
       .where(
         and(
-          eq(schema.usuarios.idPrefeitura, municipalityId),
-          eq(schema.usuarios.statusCadastro, 'PENDENTE'),
+          eq(schema.users.municipalityId, municipalityId),
+          eq(schema.users.registrationStatus, 'PENDING'),
         ),
       );
 
@@ -56,11 +56,11 @@ export class MetricsService {
       .select({
         count: sql<number>`count(*)::int`,
       })
-      .from(schema.onibus)
+      .from(schema.buses)
       .where(
         and(
-          eq(schema.onibus.idPrefeitura, municipalityId),
-          eq(schema.onibus.active, true),
+          eq(schema.buses.municipalityId, municipalityId),
+          eq(schema.buses.active, true),
         ),
       );
 
@@ -73,19 +73,19 @@ export class MetricsService {
 
     const weeklyTrips = await this.db
       .select({
-        dataViagem: schema.viagens.dataViagem,
+        tripDate: schema.trips.tripDate,
         count: sql<number>`count(*)::int`,
       })
-      .from(schema.viagens)
-      .innerJoin(schema.linhas, eq(schema.viagens.idLinha, schema.linhas.id))
+      .from(schema.trips)
+      .innerJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
       .where(
         and(
-          eq(schema.linhas.idPrefeitura, municipalityId),
-          gte(schema.viagens.dataViagem, weekStart.toISOString().slice(0, 10)),
-          lte(schema.viagens.dataViagem, weekEnd.toISOString().slice(0, 10)),
+          eq(schema.routes.municipalityId, municipalityId),
+          gte(schema.trips.tripDate, weekStart.toISOString().slice(0, 10)),
+          lte(schema.trips.tripDate, weekEnd.toISOString().slice(0, 10)),
         ),
       )
-      .groupBy(schema.viagens.dataViagem);
+      .groupBy(schema.trips.tripDate);
 
     return {
       activeStudents: activeStudents?.count ?? 0,
@@ -93,7 +93,7 @@ export class MetricsService {
       pendingApprovals: pendingCount?.count ?? 0,
       fleetActive: fleetActive?.count ?? 0,
       weeklyTrips: weeklyTrips.map((r) => ({
-        date: r.dataViagem,
+        date: r.tripDate,
         count: r.count,
       })),
     };

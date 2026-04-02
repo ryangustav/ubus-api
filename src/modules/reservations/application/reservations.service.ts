@@ -54,8 +54,12 @@ export class ReservationsService {
         })
         .returning();
       return reservation;
-    } catch (error: any) {
-      if (error.code === '23505') {
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        (error as Record<string, unknown>).code === '23505'
+      ) {
         throw new ConflictException('Seat already taken');
       }
       throw error;

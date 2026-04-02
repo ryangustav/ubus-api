@@ -23,10 +23,10 @@ describe('BusLeaderGuard', () => {
 
   const mockContext = (user?: any, params?: any): ExecutionContext => {
     return {
-      switchToHttp: jest.fn().mockReturnValue({
-        getRequest: jest.fn().mockReturnValue({ user, params }),
+      switchToHttp: () => ({
+        getRequest: () => ({ user, params }),
       }),
-    } as any;
+    } as unknown as ExecutionContext;
   };
 
   it('should deny if no user or municipalityId', async () => {

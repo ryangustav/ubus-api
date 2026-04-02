@@ -29,107 +29,125 @@ describe('TripsService', () => {
     redis = module.get(getRedisConnectionToken('default'));
   });
 
-  describe('triggerAlertaConfirmacao', () => {
+  describe('triggerConfirmationAlert', () => {
     it('should throw NotFoundException if trip not found', async () => {
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue([])
+        where: jest.fn().mockResolvedValue([]),
       };
       db.select.mockReturnValue(mockChain as any);
 
       await expect(
-        service.triggerAlertaConfirmacao('trip1', 'user1', 'mun1')
+        service.triggerConfirmationAlert('trip1', 'user1', 'mun1'),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException if trip belongs to another municipality', async () => {
       const mockWhere = jest.fn()
-        .mockResolvedValueOnce([{ idViagem: 'trip1', idLinha: 'linha1', lideresIds: [] }])
+        .mockResolvedValueOnce([
+          { id: 'trip1', routeId: 'route1', leaderIds: [] },
+        ])
         .mockResolvedValueOnce([null]) // driver target
-        .mockResolvedValueOnce([{ id: 'linha1', idPrefeitura: 'mun2' }]); // different municipality
-        
+        .mockResolvedValueOnce([{ id: 'route1', municipalityId: 'mun2' }]); // different municipality
+
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: mockWhere
+        where: mockWhere,
       };
       db.select.mockReturnValue(mockChain as any);
 
       await expect(
-        service.triggerAlertaConfirmacao('trip1', 'user1', 'mun1')
+        service.triggerConfirmationAlert('trip1', 'user1', 'mun1'),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('should trigger alert successfully if user is leader', async () => {
       const mockWhere = jest.fn()
-        .mockResolvedValueOnce([{ idViagem: 'trip1', idLinha: 'linha1', lideresIds: ['user1'] }])
-        .mockResolvedValueOnce([{ id: 'linha1', idPrefeitura: 'mun1' }]);
-        
+        .mockResolvedValueOnce([
+          { id: 'trip1', routeId: 'route1', leaderIds: ['user1'] },
+        ])
+        .mockResolvedValueOnce([{ id: 'route1', municipalityId: 'mun1' }]);
+
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: mockWhere
+        where: mockWhere,
       };
       db.select.mockReturnValue(mockChain as any);
 
-      const result = await service.triggerAlertaConfirmacao('trip1', 'user1', 'mun1');
+      const result = await service.triggerConfirmationAlert(
+        'trip1',
+        'user1',
+        'mun1',
+      );
       expect(result.message).toBe('Confirmation alert triggered');
       expect(redis.setex).toHaveBeenCalled();
     });
   });
 
-  describe('encerrarEPunir', () => {
+  describe('finishAndPunish', () => {
     it('should apply penalties to unconfirmed reservations', async () => {
       const mockWhere = jest.fn()
-        .mockResolvedValueOnce([{ idViagem: 'trip1', idLinha: 'linha1', lideresIds: ['user1'] }]) // trip
-        .mockResolvedValueOnce([{ id: 'linha1', idPrefeitura: 'mun1' }]) // linha
-        .mockResolvedValueOnce([{ id: 'res1', status: 'CONFIRMADA', idUsuario: 'user2' }]) // reservas
-        .mockResolvedValueOnce([{ nivelPrioridade: 1 }]); // user priority
-        
+        .mockResolvedValueOnce([
+          { id: 'trip1', routeId: 'route1', leaderIds: ['user1'] },
+        ]) // trip
+        .mockResolvedValueOnce([{ id: 'route1', municipalityId: 'mun1' }]) // route
+        .mockResolvedValueOnce([
+          { id: 'res1', status: 'CONFIRMED', userId: 'user2' },
+        ]) // reservations
+        .mockResolvedValueOnce([{ priorityLevel: 1 }]); // user priority
+
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: mockWhere
+        where: mockWhere,
       };
       db.select.mockReturnValue(mockChain as any);
 
       const updateChain = {
         set: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue(true)
+        where: jest.fn().mockResolvedValue(true),
       };
       db.update.mockReturnValue(updateChain as any);
 
-      const result = await service.encerrarEPunir('trip1', 'user1', 'mun1');
+      const result = await service.finishAndPunish('trip1', 'user1', 'mun1');
       expect(result.message).toBeDefined();
       expect(db.update).toHaveBeenCalled();
     });
   });
 
-  describe('transbordo', () => {
+  describe('relocation', () => {
     it('should reallocate passengers to destination trip', async () => {
       const mockWhere = jest.fn()
-        .mockResolvedValueOnce([{ idViagem: 'trip1', idLinha: 'linha1', lideresIds: ['user1'] }]) // origem
-        .mockResolvedValueOnce([{ idViagem: 'trip2', idLinha: 'linha1' }]) // destino
-        .mockResolvedValueOnce([{ id: 'linha1', idPrefeitura: 'mun1' }]) // linha
-        .mockResolvedValueOnce([{ id: 'res1', idViagem: 'trip1', numeroAssento: 1 }]) // reservas
-        .mockResolvedValueOnce([{ numeroAssento: 1 }]); // destino ocupados (so seat 1 is occupied)
-        
+        .mockResolvedValueOnce([
+          { id: 'trip1', routeId: 'route1', leaderIds: ['user1'] },
+        ]) // origin
+        .mockResolvedValueOnce([{ id: 'trip2', routeId: 'route1' }]) // destination
+        .mockResolvedValueOnce([{ id: 'route1', municipalityId: 'mun1' }]) // route
+        .mockResolvedValueOnce([
+          { id: 'res1', tripId: 'trip1', seatNumber: 1 },
+        ]) // reservations
+        .mockResolvedValueOnce([{ seatNumber: 1 }]); // destination occupied (so seat 1 is occupied)
+
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: mockWhere
+        where: mockWhere,
       };
       db.select.mockReturnValue(mockChain as any);
 
       const updateChain = {
         set: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue(true)
+        where: jest.fn().mockResolvedValue(true),
       };
       db.update.mockReturnValue(updateChain as any);
 
-      await service.transbordo('trip1', 'trip2', 'user1', 'mun1');
-      
+      await service.relocation('trip1', 'trip2', 'user1', 'mun1');
+
       // Since seat 1 was occupied in destination, user from origin should get seat 2
-      expect(updateChain.set).toHaveBeenCalledWith(expect.objectContaining({
-        numeroAssento: 2,
-        idViagem: 'trip2'
-      }));
+      expect(updateChain.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          seatNumber: 2,
+          tripId: 'trip2',
+        }),
+      );
     });
   });
 });

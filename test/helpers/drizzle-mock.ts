@@ -12,7 +12,7 @@ export const mockDrizzle = {
   set: jest.fn().mockReturnThis(),
   delete: jest.fn().mockReturnThis(),
   returning: jest.fn().mockResolvedValue([]),
-  mockResolvedValue: function (data: any) {
+  mockResolvedValue: function (this: any, data: any) {
     // Override the final chainable method to return specific data
     // Handles both select/delete returning arrays or plain values
     this._mockData = data;
@@ -22,7 +22,7 @@ export const mockDrizzle = {
     this.limit = returnMock;
     return this;
   },
-  reset: function () {
+  reset: function (this: any) {
     this.select.mockClear();
     this.from.mockClear();
     this.leftJoin.mockClear();
@@ -51,5 +51,5 @@ export const mockDrizzle = {
     this.set.mockReturnThis();
     this.delete.mockReturnThis();
     this.returning.mockResolvedValue([]);
-  }
+  },
 };

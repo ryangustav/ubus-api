@@ -7,25 +7,26 @@ import { DRIZZLE } from '../../../shared/database/database.module';
 import { getRedisConnectionToken } from '@nestjs-modules/ioredis';
 import { mockDrizzle } from '../../../../test/helpers/drizzle-mock';
 import { mockRedis } from '../../../../test/helpers/redis-mock';
-import { ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 
 jest.mock('bcryptjs', () => ({
   hash: jest.fn(),
-  compare: jest.fn()
+  compare: jest.fn(),
 }));
 
 describe('AuthService', () => {
   let service: AuthService;
   let db: typeof mockDrizzle;
-  let redis: typeof mockRedis;
-  
+
   const mockJwtService = { sign: jest.fn().mockReturnValue('token') };
-  const mockEmailService = { 
+  const mockEmailService = {
     sendPasswordResetEmail: jest.fn(),
-    getPasswordResetEmailHtml: jest.fn()
+    getPasswordResetEmailHtml: jest.fn(),
   };
-  const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost') };
+  const mockConfigService = {
+    get: jest.fn().mockReturnValue('http://localhost'),
+  };
 
   beforeEach(async () => {
     mockDrizzle.reset();
@@ -45,7 +46,6 @@ describe('AuthService', () => {
 
     service = module.get<AuthService>(AuthService);
     db = module.get(DRIZZLE);
-    redis = module.get(getRedisConnectionToken('default'));
   });
 
   describe('register', () => {
@@ -54,50 +54,58 @@ describe('AuthService', () => {
       cpf: '12345678901',
       name: 'Test',
       email: 'test@test.com',
-      password: 'password123'
+      password: 'password123',
     };
 
     it('should throw ConflictException if municipality not found', async () => {
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue([])
+        where: jest.fn().mockResolvedValue([]),
       };
       db.select.mockReturnValue(mockChain as any);
 
-      await expect(service.register(validDto)).rejects.toThrow(ConflictException);
+      await expect(service.register(validDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should throw ConflictException if email exists in municipality', async () => {
       const mockWhere = jest.fn()
-        .mockResolvedValueOnce([{ id: 'mun1', ativo: true }]) // prefeitura
+        .mockResolvedValueOnce([{ id: 'mun1', active: true }]) // municipality
         .mockResolvedValueOnce([{ id: 'user1' }]) // email exists
         .mockResolvedValueOnce([]); // cpf check
 
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: mockWhere
+        where: mockWhere,
       };
       db.select.mockReturnValue(mockChain as any);
 
-      await expect(service.register(validDto)).rejects.toThrow(ConflictException);
+      await expect(service.register(validDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should register successfully', async () => {
-       const mockWhere = jest.fn()
-        .mockResolvedValueOnce([{ id: 'mun1', ativo: true }]) // prefeitura
+      const mockWhere = jest.fn()
+        .mockResolvedValueOnce([{ id: 'mun1', active: true }]) // municipality
         .mockResolvedValueOnce([]) // email check
         .mockResolvedValueOnce([]); // cpf check
 
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: mockWhere
+        where: mockWhere,
       };
       db.select.mockReturnValue(mockChain as any);
 
-      const mockUser = { id: 'user1', email: validDto.email, senhaHash: 'hash' };
+      const mockUser = {
+        id: 'user1',
+        email: validDto.email,
+        passwordHash: 'hash',
+      };
       const insertChain = {
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([mockUser])
+        returning: jest.fn().mockResolvedValue([mockUser]),
       };
       db.insert.mockReturnValue(insertChain as any);
 
@@ -115,45 +123,66 @@ describe('AuthService', () => {
     const loginDto = { email: 'a@a.com', password: 'password123' };
 
     it('should throw UnauthorizedException on invalid email', async () => {
-       const mockChain = {
+      const mockChain = {
         from: jest.fn().mockReturnThis(),
         leftJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue([])
+        where: jest.fn().mockResolvedValue([]),
       };
       db.select.mockReturnValue(mockChain as any);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should throw UnauthorizedException if wrong password', async () => {
-      const mockUser = [{
-        user: { id: 'user1', senhaHash: 'hash', email: 'a@a.com', role: 'ALUNO', idPrefeitura: 'mun1' },
-        prefeitura: { ativo: true }
-      }];
+      const mockUser = [
+        {
+          user: {
+            id: 'user1',
+            passwordHash: 'hash',
+            email: 'a@a.com',
+            role: 'STUDENT',
+            municipalityId: 'mun1',
+          },
+          municipality: { active: true },
+        },
+      ];
       const mockChain = {
         from: jest.fn().mockReturnThis(),
         leftJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue(mockUser)
+        where: jest.fn().mockResolvedValue(mockUser),
       };
       db.select.mockReturnValue(mockChain as any);
-      
+
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should return token if valid', async () => {
-      const mockUser = [{
-        user: { id: 'user1', log: 'u1', senhaHash: 'hash', email: 'a@a.com', role: 'ALUNO', idPrefeitura: 'mun1' },
-        prefeitura: { ativo: true }
-      }];
+      const mockUser = [
+        {
+          user: {
+            id: 'user1',
+            log: 'u1',
+            passwordHash: 'hash',
+            email: 'a@a.com',
+            role: 'STUDENT',
+            municipalityId: 'mun1',
+          },
+          municipality: { active: true },
+        },
+      ];
       const mockChain = {
         from: jest.fn().mockReturnThis(),
         leftJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue(mockUser)
+        where: jest.fn().mockResolvedValue(mockUser),
       };
       db.select.mockReturnValue(mockChain as any);
-      
+
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.login(loginDto);

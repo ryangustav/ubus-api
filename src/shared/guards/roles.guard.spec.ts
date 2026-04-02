@@ -15,12 +15,12 @@ describe('RolesGuard', () => {
     return {
       getHandler: jest.fn(),
       getClass: jest.fn(),
-      switchToHttp: jest.fn().mockReturnValue({
-        getRequest: jest.fn().mockReturnValue({
+      switchToHttp: () => ({
+        getRequest: () => ({
           user: role ? { role } : undefined,
         }),
       }),
-    } as any;
+    } as unknown as ExecutionContext;
   };
 
   it('should allow access if no roles are required', () => {
@@ -29,17 +29,19 @@ describe('RolesGuard', () => {
   });
 
   it('should deny access if no user role exists', () => {
-    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['GESTOR']);
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['MANAGER']);
     expect(guard.canActivate(mockContext())).toBe(false);
   });
 
   it('should deny access if user role is not in required roles', () => {
-    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['GESTOR']);
-    expect(guard.canActivate(mockContext('ALUNO'))).toBe(false);
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['MANAGER']);
+    expect(guard.canActivate(mockContext('STUDENT'))).toBe(false);
   });
 
   it('should allow access if user role matches required roles', () => {
-    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['GESTOR', 'MOTORISTA']);
-    expect(guard.canActivate(mockContext('GESTOR'))).toBe(true);
+    jest
+      .spyOn(reflector, 'getAllAndOverride')
+      .mockReturnValue(['MANAGER', 'DRIVER']);
+    expect(guard.canActivate(mockContext('MANAGER'))).toBe(true);
   });
 });

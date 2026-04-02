@@ -21,51 +21,53 @@ describe('FleetService', () => {
     db = module.get(DRIZZLE);
   });
 
-  describe('listLinhas', () => {
-    it('should list lines by prefeitura id', async () => {
+  describe('listRoutes', () => {
+    it('should list routes by municipality id', async () => {
       const mockChain = {
         from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue([{ id: 'linha1' }])
+        where: jest.fn().mockResolvedValue([{ id: 'route1' }]),
       };
       db.select.mockReturnValue(mockChain as any);
 
-      const result = await service.listLinhas('mun1');
-      expect(result).toEqual([{ id: 'linha1' }]);
+      const result = await service.listRoutes('mun1');
+      expect(result).toEqual([{ id: 'route1' }]);
     });
   });
 
-  describe('createLinha', () => {
+  describe('createRoute', () => {
     it('should create a new route', async () => {
       const dto = {
-        nome: 'Route 1',
-        diasDaSemana: [1,2,3],
-        horarioAberturaVotacao: '06:00',
-        horarioFechamentoVotacao: '07:30'
+        name: 'Route 1',
+        weekDays: [1, 2, 3],
+        votingOpenTime: '06:00',
+        votingCloseTime: '07:30',
       };
-      
+
       const insertChain = {
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([{ id: 'linha1', ...dto }])
+        returning: jest.fn().mockResolvedValue([{ id: 'route1', ...dto }]),
       };
       db.insert.mockReturnValue(insertChain as any);
 
-      const result = await service.createLinha('mun1', dto);
-      expect(result.id).toBe('linha1');
-      expect(insertChain.values).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Route 1' }));
+      const result = await service.createRoute('mun1', dto);
+      expect(result.id).toBe('route1');
+      expect(insertChain.values).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Route 1' }),
+      );
     });
   });
 
-  describe('updateLinha', () => {
+  describe('updateRoute', () => {
     it('should throw NotFoundException if route not found', async () => {
       const updateChain = {
         set: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([])
+        returning: jest.fn().mockResolvedValue([]),
       };
       db.update.mockReturnValue(updateChain as any);
 
       await expect(
-        service.updateLinha('mun1', 'linha1', { nome: 'New name' })
+        service.updateRoute('mun1', 'route1', { name: 'New name' }),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -73,46 +75,48 @@ describe('FleetService', () => {
       const updateChain = {
         set: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([{ id: 'linha1', nome: 'New name' }])
+        returning: jest.fn().mockResolvedValue([{ id: 'route1', name: 'New name' }]),
       };
       db.update.mockReturnValue(updateChain as any);
 
-      const result = await service.updateLinha('mun1', 'linha1', { nome: 'New name' });
-      expect(result.nome).toBe('New name');
-      expect(updateChain.set).toHaveBeenCalledWith({ nome: 'New name' });
+      const result = await service.updateRoute('mun1', 'route1', {
+        name: 'New name',
+      });
+      expect(result.name).toBe('New name');
+      expect(updateChain.set).toHaveBeenCalledWith({ name: 'New name' });
     });
   });
 
-  describe('createOnibus', () => {
+  describe('createBus', () => {
     it('should create a new bus', async () => {
       const dto = {
-        numeroIdentificacao: '123',
-        placa: 'ABC',
-        capacidadePadrao: 40
+        identificationNumber: '123',
+        plate: 'ABC',
+        standardCapacity: 40,
       };
       const insertChain = {
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([{ id: 'bus1', ...dto }])
+        returning: jest.fn().mockResolvedValue([{ id: 'bus1', ...dto }]),
       };
       db.insert.mockReturnValue(insertChain as any);
 
-      const result = await service.createOnibus('mun1', dto, 'motorista1');
+      const result = await service.createBus('mun1', dto, 'driver1');
       expect(result.id).toBe('bus1');
     });
   });
 
-  describe('updateOnibus', () => {
+  describe('updateBus', () => {
     it('should throw NotFoundException if bus not found', async () => {
-        const updateChain = {
-          set: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          returning: jest.fn().mockResolvedValue([])
-        };
-        db.update.mockReturnValue(updateChain as any);
-  
-        await expect(
-          service.updateOnibus('mun1', 'bus1', { placa: 'XYZ' })
-        ).rejects.toThrow(NotFoundException);
-      });
+      const updateChain = {
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        returning: jest.fn().mockResolvedValue([]),
+      };
+      db.update.mockReturnValue(updateChain as any);
+
+      await expect(
+        service.updateBus('mun1', 'bus1', { plate: 'XYZ' }),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 });

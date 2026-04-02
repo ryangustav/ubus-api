@@ -15,36 +15,59 @@ import type { JwtPayload } from '../auth/infrastructure/strategies/jwt.strategy'
 import { ApiProperty } from '@nestjs/swagger';
 
 class UpdateStatusDto {
-  @ApiProperty({ enum: ['APROVADO', 'REJEITADO'] })
-  status!: 'APROVADO' | 'REJEITADO';
+  @ApiProperty({ enum: ['APPROVED', 'REJECTED'] })
+  status!: 'APPROVED' | 'REJECTED';
 }
 
 @ApiTags('users')
-@Controller('usuarios')
+@Controller('users')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UsersController {
   constructor(private users: UsersService) {}
 
-  @Get('pendentes')
+  @Get('pending')
   @UseGuards(RolesGuard)
-  @Roles('GESTOR', 'SUPER_ADMIN')
+  @Roles('MANAGER', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'List pending users (manager approval)' })
-  listPendentes(@CurrentUser() user: JwtPayload) {
-    return this.users.listPendentes(user.municipalityId);
+  listPending(@CurrentUser() user: JwtPayload) {
+    return this.users.listPending(user.municipalityId);
   }
 
   @Patch(':id/status')
   @UseGuards(RolesGuard)
-  @Roles('GESTOR', 'SUPER_ADMIN')
+  @Roles('MANAGER', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Approve or reject user registration' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', enum: ['APROVADO', 'REJEITADO'] } } } })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['APPROVED', 'REJECTED'] },
+      },
+    },
+  })
   updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateStatusDto,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.users.updateStatus(id, dto.status, user.municipalityId);
+  }
+
+  @Patch('me/point')
+  @ApiOperation({ summary: 'Update my default pick-up point' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { pointId: { type: 'string', format: 'uuid' } },
+      required: ['pointId'],
+    },
+  })
+  updatePoint(
+    @CurrentUser() user: JwtPayload,
+    @Body('pointId') pointId: string,
+  ) {
+    return this.users.updatePoint(user.sub, pointId);
   }
 }

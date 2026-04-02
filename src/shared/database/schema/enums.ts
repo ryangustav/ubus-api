@@ -1,34 +1,34 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
-export const roleUsuarioEnum = pgEnum('role_usuario', [
+export const userRoleEnum = pgEnum('user_role', [
   'SUPER_ADMIN',
-  'GESTOR',
-  'MOTORISTA',
-  'LIDER',
-  'ALUNO',
-  'CARONISTA',
+  'MANAGER',
+  'DRIVER',
+  'LEADER',
+  'STUDENT',
+  'RIDE_SHARE',
 ]);
 
-export const statusCadastroEnum = pgEnum('status_cadastro', [
-  'PENDENTE',
-  'APROVADO',
-  'REJEITADO',
+export const registrationStatusEnum = pgEnum('registration_status', [
+  'PENDING',
+  'APPROVED',
+  'REJECTED',
 ]);
 
-export const direcaoViagemEnum = pgEnum('direcao_viagem', ['IDA', 'VOLTA']);
+export const tripDirectionEnum = pgEnum('trip_direction', ['OUTBOUND', 'INBOUND']);
 
-export const statusViagemEnum = pgEnum('status_viagem', [
-  'AGENDADA',
-  'ABERTA_PARA_RESERVA',
-  'EM_ANDAMENTO',
-  'FINALIZADA',
-  'CANCELADA',
+export const tripStatusEnum = pgEnum('trip_status', [
+  'SCHEDULED',
+  'OPEN_FOR_RESERVATION',
+  'ONGOING',
+  'FINISHED',
+  'CANCELLED',
 ]);
 
-export const statusReservaEnum = pgEnum('status_reserva', [
-  'CONFIRMADA',
-  'PRESENTE',
-  'FALTOU',
-  'CANCELADA_SISTEMA',
-  'EXCESSO',
+export const reservationStatusEnum = pgEnum('reservation_status', [
+  'CONFIRMED',
+  'PRESENT',
+  'ABSENT',
+  'CANCELLED_BY_SYSTEM',
+  'EXCESS',
 ]);

@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { DRIZZLE } from '../../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -15,144 +16,170 @@ export class ReservationsService {
   constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
   /**
-   * Create: Reserva assento. numeroAssento null = ônibus de excesso.
-   * UNIQUE(id_viagem, numero_assento) evita overbooking.
+   * Create: Reserve seat. seatNumber null = excess bus.
+   * UNIQUE(trip_id, seat_number) avoids overbooking.
    */
   async create(dto: {
-    idViagem: string;
-    idUsuario: string;
-    numeroAssento?: number | null;
-    isCarona?: boolean;
+    tripId: string;
+    userId: string;
+    seatNumber?: number | null;
+    isRideShare?: boolean;
   }) {
-    const [viagem] = await this.db
+    const [trip] = await this.db
       .select()
-      .from(schema.viagens)
-      .where(eq(schema.viagens.idViagem, dto.idViagem));
-    if (!viagem) {
-      throw new NotFoundException(`Trip "${dto.idViagem}" not found`);
+      .from(schema.trips)
+      .where(eq(schema.trips.id, dto.tripId));
+    if (!trip) {
+      throw new NotFoundException(`Trip "${dto.tripId}" not found`);
     }
 
-    const isExcesso = dto.numeroAssento == null;
-    if (isExcesso) {
-      const ocupados = await this.getAssentosOcupados(dto.idViagem);
-      if (ocupados.length < viagem.capacidadeReal) {
+    const isExcess = dto.seatNumber == null;
+    if (isExcess) {
+      const occupied = await this.getOccupiedSeats(dto.tripId);
+      if (occupied.length < trip.actualCapacity) {
         throw new BadRequestException(
-          `Excess voting only opens when capacity is full (${ocupados.length}/${viagem.capacidadeReal})`,
+          `Excess voting only opens when capacity is full (${occupied.length}/${trip.actualCapacity})`,
         );
       }
     }
-    const [reserva] = await this.db
-      .insert(schema.reservas)
-      .values({
-        idViagem: dto.idViagem,
-        idUsuario: dto.idUsuario,
-        numeroAssento: dto.numeroAssento ?? null,
-        isCarona: dto.isCarona ?? false,
-        status: isExcesso ? 'EXCESSO' : 'CONFIRMADA',
-      })
-      .returning();
-    return reserva;
+    try {
+      const [reservation] = await this.db
+        .insert(schema.reservations)
+        .values({
+          tripId: dto.tripId,
+          userId: dto.userId,
+          seatNumber: dto.seatNumber ?? null,
+          isRideShare: dto.isRideShare ?? false,
+          status: isExcess ? 'EXCESS' : 'CONFIRMED',
+        })
+        .returning();
+      return reservation;
+    } catch (error: any) {
+      if (error.code === '23505') {
+        throw new ConflictException('Seat already taken');
+      }
+      throw error;
+    }
   }
 
   async findOne(id: string) {
-    const [reserva] = await this.db
+    const [reservation] = await this.db
       .select()
-      .from(schema.reservas)
-      .where(eq(schema.reservas.id, id));
-    if (!reserva) throw new NotFoundException('Reservation not found');
-    return reserva;
+      .from(schema.reservations)
+      .where(eq(schema.reservations.id, id));
+    if (!reservation) throw new NotFoundException('Reservation not found');
+    return reservation;
   }
 
-  async findMinhas(idUsuario: string) {
+  async findMyReservations(userId: string) {
     const rows = await this.db
       .select({
-        reserva: schema.reservas,
-        viagem: schema.viagens,
+        reservation: schema.reservations,
+        trip: schema.trips,
       })
-      .from(schema.reservas)
+      .from(schema.reservations)
       .innerJoin(
-        schema.viagens,
-        eq(schema.reservas.idViagem, schema.viagens.idViagem),
+        schema.trips,
+        eq(schema.reservations.tripId, schema.trips.id),
       )
       .where(
         and(
-          eq(schema.reservas.idUsuario, idUsuario),
-          gte(schema.viagens.dataViagem, new Date().toISOString().slice(0, 10)),
+          eq(schema.reservations.userId, userId),
+          gte(schema.trips.tripDate, new Date().toISOString().slice(0, 10)),
         ),
       );
-    return rows;
+    return rows.map((r) => ({
+      ...r.reservation,
+      trip: r.trip,
+    }));
   }
 
-  async findByViagem(idViagem: string) {
-    return this.db
-      .select()
-      .from(schema.reservas)
-      .where(eq(schema.reservas.idViagem, idViagem));
-  }
-
-  async getAssentosOcupados(idViagem: string): Promise<number[]> {
+  async findByTrip(tripId: string) {
     const rows = await this.db
-      .select({ numeroAssento: schema.reservas.numeroAssento })
-      .from(schema.reservas)
+      .select({
+        reservation: schema.reservations,
+        user: {
+          id: schema.users.id,
+          name: schema.users.name,
+          cpf: schema.users.cpf,
+        },
+      })
+      .from(schema.reservations)
+      .innerJoin(
+        schema.users,
+        eq(schema.reservations.userId, schema.users.id),
+      )
+      .where(eq(schema.reservations.tripId, tripId));
+
+    return rows.map((r) => ({
+      ...r.reservation,
+      user: r.user,
+    }));
+  }
+
+  async getOccupiedSeats(tripId: string): Promise<number[]> {
+    const rows = await this.db
+      .select({ seatNumber: schema.reservations.seatNumber })
+      .from(schema.reservations)
       .where(
         and(
-          eq(schema.reservas.idViagem, idViagem),
-          isNotNull(schema.reservas.numeroAssento),
+          eq(schema.reservations.tripId, tripId),
+          isNotNull(schema.reservations.seatNumber),
         ),
       );
     return rows
-      .map((r) => r.numeroAssento)
+      .map((r) => r.seatNumber)
       .filter((n): n is number => n != null);
   }
 
   /**
-   * Update: Trocar assento ou status. Se idUsuario informado, só permite se for dono.
+   * Update: Change seat or status. If userId provided, only allows if owner.
    */
   async update(
     id: string,
     dto: {
-      numeroAssento?: number | null;
-      status?: (typeof schema.reservas.$inferSelect)['status'];
+      seatNumber?: number | null;
+      status?: (typeof schema.reservations.$inferSelect)['status'];
     },
-    idUsuario?: string,
+    userId?: string,
   ) {
-    const [existe] = await this.db
+    const [exists] = await this.db
       .select()
-      .from(schema.reservas)
-      .where(eq(schema.reservas.id, id));
-    if (!existe) throw new NotFoundException('Reserva não encontrada');
-    if (idUsuario && existe.idUsuario !== idUsuario) {
+      .from(schema.reservations)
+      .where(eq(schema.reservations.id, id));
+    if (!exists) throw new NotFoundException('Reservation not found');
+    if (userId && exists.userId !== userId) {
       throw new ForbiddenException('Can only update your own reservation');
     }
-    const [reserva] = await this.db
-      .update(schema.reservas)
+    const [reservation] = await this.db
+      .update(schema.reservations)
       .set({
-        ...(dto.numeroAssento !== undefined && {
-          numeroAssento: dto.numeroAssento,
+        ...(dto.seatNumber !== undefined && {
+          seatNumber: dto.seatNumber,
         }),
         ...(dto.status !== undefined && { status: dto.status }),
       })
-      .where(eq(schema.reservas.id, id))
+      .where(eq(schema.reservations.id, id))
       .returning();
-    return reserva;
+    return reservation;
   }
 
   /**
-   * Delete: Cancelar reserva (remove e libera o assento). Se idUsuario informado, só permite se for dono.
+   * Delete: Cancel reservation (remove and free seat). If userId provided, only allows if owner.
    */
-  async remove(id: string, idUsuario?: string) {
-    const [existe] = await this.db
+  async remove(id: string, userId?: string) {
+    const [exists] = await this.db
       .select()
-      .from(schema.reservas)
-      .where(eq(schema.reservas.id, id));
-    if (!existe) throw new NotFoundException('Reserva não encontrada');
-    if (idUsuario && existe.idUsuario !== idUsuario) {
+      .from(schema.reservations)
+      .where(eq(schema.reservations.id, id));
+    if (!exists) throw new NotFoundException('Reservation not found');
+    if (userId && exists.userId !== userId) {
       throw new ForbiddenException('Can only cancel your own reservation');
     }
-    const [reserva] = await this.db
-      .delete(schema.reservas)
-      .where(eq(schema.reservas.id, id))
+    const [reservation] = await this.db
+      .delete(schema.reservations)
+      .where(eq(schema.reservations.id, id))
       .returning();
-    return reserva;
+    return reservation;
   }
 }

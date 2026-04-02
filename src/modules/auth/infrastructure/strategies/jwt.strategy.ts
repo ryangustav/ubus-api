@@ -8,11 +8,11 @@ export interface JwtPayload {
   email: string;
   role:
     | 'SUPER_ADMIN'
-    | 'GESTOR'
-    | 'MOTORISTA'
-    | 'LIDER'
-    | 'ALUNO'
-    | 'CARONISTA';
+    | 'MANAGER'
+    | 'DRIVER'
+    | 'LEADER'
+    | 'STUDENT'
+    | 'RIDE_SHARE';
   municipalityId: string;
   iat?: number;
   exp?: number;

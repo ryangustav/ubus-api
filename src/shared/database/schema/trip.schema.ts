@@ -7,32 +7,32 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import { direcaoViagemEnum, statusViagemEnum } from './enums';
-import { linhas, onibus } from './fleet.schema';
-import { usuarios } from './user.schema';
+import { tripDirectionEnum, tripStatusEnum } from './enums';
+import { routes, buses } from './fleet.schema';
+import { users } from './user.schema';
 
-export const viagens = pgTable('viagens', {
-  idViagem: varchar('id_viagem', { length: 50 }).primaryKey(), // Smart Key: YYYYMMDD-ONIBUS-TURNO
-  dataViagem: date('data_viagem').notNull(),
-  turno: varchar('turno', { length: 10 }).notNull(), // MANHA, TARDE, NOITE
-  direcao: direcaoViagemEnum('direcao').notNull(),
-  idLinha: uuid('id_linha')
+export const trips = pgTable('trips', {
+  id: varchar('id', { length: 50 }).primaryKey(), // Smart Key: YYYYMMDD-ONIBUS-SHIFT
+  tripDate: date('trip_date').notNull(),
+  shift: varchar('shift', { length: 10 }).notNull(), // MORNING, AFTERNOON, NIGHT
+  direction: tripDirectionEnum('direction').notNull(),
+  routeId: uuid('route_id')
     .notNull()
-    .references(() => linhas.id),
-  idOnibus: uuid('id_onibus')
+    .references(() => routes.id),
+  busId: uuid('bus_id')
     .notNull()
-    .references(() => onibus.id),
-  idMotorista: uuid('id_motorista').references(() => usuarios.id),
-  lideresIds: uuid('lideres_ids')
+    .references(() => buses.id),
+  driverId: uuid('driver_id').references(() => users.id),
+  leaderIds: uuid('leader_ids')
     .array()
     .default(sql`'{}'`),
-  capacidadeReal: integer('capacidade_real').notNull(),
-  aberturaVotacao: timestamp('abertura_votacao', {
+  actualCapacity: integer('actual_capacity').notNull(),
+  votingOpenAt: timestamp('voting_open_at', {
     withTimezone: true,
   }).notNull(),
-  fechamentoVotacao: timestamp('fechamento_votacao', {
+  votingCloseAt: timestamp('voting_close_at', {
     withTimezone: true,
   }).notNull(),
-  status: statusViagemEnum('status').default('AGENDADA'),
-  criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow(),
+  status: tripStatusEnum('status').default('SCHEDULED'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

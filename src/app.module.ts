@@ -14,9 +14,15 @@ import { TripsModule } from './modules/trips/trips.module';
 import { ReservationsModule } from './modules/reservations/reservations.module';
 import { HealthModule } from './modules/health/health.module';
 
+import { ThrottlerModule } from '@nestjs/throttler';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 30, // Default 30 req/min globally
+    }]),
     DatabaseModule,
     GuardsModule,
     RedisModule,

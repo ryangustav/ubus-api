@@ -8,11 +8,15 @@ export const registerSchema = z.object({
   password: z.string().min(6, 'Password must have at least 6 characters'),
   phone: z.string().optional(),
   role: z
-    .enum(['GESTOR', 'MOTORISTA', 'LIDER', 'ALUNO', 'CARONISTA'])
+    .enum(['MANAGER', 'DRIVER', 'LEADER', 'STUDENT', 'RIDE_SHARE'])
     .optional()
-    .default('ALUNO'),
+    .default('STUDENT'),
   priorityLevel: z.number().int().min(1).max(3).optional(), // 1: Titular, 2: Univ. Caronista, 3: Caronista Comum
   defaultRouteId: z.string().uuid().optional(),
+  needsWheelchair: z.boolean().optional().default(false),
+  photoUrl: z.string().url().optional(),
+  gradeFileUrl: z.string().url().optional(),
+  residenciaFileUrl: z.string().url().optional(),
 });
 
 export type RegisterDto = z.infer<typeof registerSchema>;

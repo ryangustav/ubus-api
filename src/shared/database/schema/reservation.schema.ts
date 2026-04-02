@@ -7,26 +7,26 @@ import {
   timestamp,
   unique,
 } from 'drizzle-orm/pg-core';
-import { statusReservaEnum } from './enums';
-import { viagens } from './trip.schema';
-import { usuarios } from './user.schema';
+import { reservationStatusEnum } from './enums';
+import { trips } from './trip.schema';
+import { users } from './user.schema';
 
-export const reservas = pgTable(
-  'reservas',
+export const reservations = pgTable(
+  'reservations',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    idViagem: varchar('id_viagem', { length: 50 })
+    tripId: varchar('trip_id', { length: 50 })
       .notNull()
-      .references(() => viagens.idViagem, { onDelete: 'cascade' }),
-    idUsuario: uuid('id_usuario')
+      .references(() => trips.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
       .notNull()
-      .references(() => usuarios.id, { onDelete: 'cascade' }),
-    numeroAssento: integer('numero_assento'), // NULL = ônibus de excesso (múltiplos permitidos)
-    isCarona: boolean('is_carona').default(false), // Flag para guilhotina
-    status: statusReservaEnum('status').default('CONFIRMADA'),
-    criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow(),
+      .references(() => users.id, { onDelete: 'cascade' }),
+    seatNumber: integer('seat_number'), // NULL = excess bus
+    isRideShare: boolean('is_ride_share').default(false), // Flag for guillotine
+    status: reservationStatusEnum('status').default('CONFIRMED'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
-    unique('assento_unico_por_viagem').on(table.idViagem, table.numeroAssento),
+    unique('unique_seat_per_trip').on(table.tripId, table.seatNumber),
   ],
 );

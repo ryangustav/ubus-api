@@ -4,10 +4,10 @@ export const ROLES_KEY = 'roles';
 
 export type Role =
   | 'SUPER_ADMIN'
-  | 'GESTOR'
-  | 'MOTORISTA'
-  | 'LIDER'
-  | 'ALUNO'
-  | 'CARONISTA';
+  | 'MANAGER'
+  | 'DRIVER'
+  | 'LEADER'
+  | 'STUDENT'
+  | 'RIDE_SHARE';
 
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);

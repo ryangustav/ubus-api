@@ -16,7 +16,7 @@ services:
       USE_OCI_VAULT: ${USE_OCI_VAULT:-true}
       OCI_SECRET_OCID: ${OCI_SECRET_OCID}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/v1/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/v1/health"]
       interval: 10s
       timeout: 5s
       retries: 3

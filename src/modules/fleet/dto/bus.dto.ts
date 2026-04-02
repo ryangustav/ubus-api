@@ -1,44 +1,68 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional, IsInt, Min, IsBoolean } from 'class-validator';
 
-export class CreateOnibusDto {
+export class CreateBusDto {
   @ApiProperty({
     example: '20120',
     description: 'Bus identification number',
   })
-  numeroIdentificacao: string;
+  @IsString()
+  @IsNotEmpty()
+  identificationNumber: string;
 
   @ApiProperty({ example: 'ABC-1234' })
-  placa: string;
+  @IsString()
+  @IsNotEmpty()
+  plate: string;
 
   @ApiProperty({ example: 40, description: 'Number of seats' })
-  capacidadePadrao: number;
+  @IsInt()
+  @Min(1)
+  standardCapacity: number;
 
   @ApiPropertyOptional({ example: true, description: 'Has bathroom' })
-  temBanheiro?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  hasBathroom?: boolean;
 
   @ApiPropertyOptional({ example: true, description: 'Has air conditioning' })
-  temArCondicionado?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  hasAirConditioning?: boolean;
 }
 
-export class UpdateOnibusDto {
+export class UpdateBusDto {
   @ApiPropertyOptional({ example: '20120' })
-  numeroIdentificacao?: string;
+  @IsString()
+  @IsOptional()
+  identificationNumber?: string;
 
   @ApiPropertyOptional({ example: 'ABC-1234' })
-  placa?: string;
+  @IsString()
+  @IsOptional()
+  plate?: string;
 
   @ApiPropertyOptional({ example: 40 })
-  capacidadePadrao?: number;
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  standardCapacity?: number;
 
   @ApiPropertyOptional({ example: true })
-  temBanheiro?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  hasBathroom?: boolean;
 
   @ApiPropertyOptional({ example: true })
-  temArCondicionado?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  hasAirConditioning?: boolean;
 
   @ApiPropertyOptional({
     example: true,
     description: 'Active for capacity calculation',
   })
+  @IsBoolean()
+  @IsOptional()
   active?: boolean;
 }

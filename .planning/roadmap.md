@@ -42,5 +42,15 @@ Plans:
 | 1. Infrastructure | 0/3 | In progress | - |
 | 2. Auth Hardening | 0/TBD | Not started | - |
 
+### Phase 3: security
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 3 to break down)
+
 ---
 *Last updated: 2026-03-30*

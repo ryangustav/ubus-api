@@ -15,12 +15,12 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { FleetService } from './application/fleet.service';
-import { CreateLinhaDto, UpdateLinhaDto } from './dto/linha.dto';
-import { CreateOnibusDto, UpdateOnibusDto } from './dto/onibus.dto';
+import { CreateRouteDto, UpdateRouteDto } from './dto/route.dto';
+import { CreateBusDto, UpdateBusDto } from './dto/bus.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/guards/roles.decorator';
-import { LiderOnibusGuard } from '../../shared/guards/lider-onibus.guard';
+import { BusLeaderGuard } from '../../shared/guards/bus-leader.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/infrastructure/strategies/jwt.strategy';
 
@@ -34,70 +34,77 @@ export class FleetController {
   @Get('routes')
   @ApiOperation({ summary: 'List routes of municipality' })
   listRoutes(@CurrentUser() user: JwtPayload) {
-    return this.fleet.listLinhas(user.municipalityId);
+    return this.fleet.listRoutes(user.municipalityId);
+  }
+
+  @Get('routes/:id/points')
+  @ApiOperation({ summary: 'List pick-up points of a route' })
+  @ApiParam({ name: 'id', description: 'Route ID' })
+  listPoints(@Param('id') id: string) {
+    return this.fleet.listPointsByRoute(id);
   }
 
   @Get('buses')
   @ApiOperation({ summary: 'List buses of municipality' })
   listBuses(@CurrentUser() user: JwtPayload) {
-    return this.fleet.listOnibus(user.municipalityId);
+    return this.fleet.listBuses(user.municipalityId);
   }
 
   @Post('routes')
   @UseGuards(RolesGuard)
-  @Roles('GESTOR')
+  @Roles('MANAGER')
   @ApiOperation({ summary: 'Create route (manager only)' })
-  @ApiBody({ type: CreateLinhaDto })
-  createLinha(@CurrentUser() user: JwtPayload, @Body() dto: CreateLinhaDto) {
-    return this.fleet.createLinha(user.municipalityId, dto);
+  @ApiBody({ type: CreateRouteDto })
+  createRoute(@CurrentUser() user: JwtPayload, @Body() dto: CreateRouteDto) {
+    return this.fleet.createRoute(user.municipalityId, dto);
   }
 
   @Patch('routes/:id')
   @UseGuards(RolesGuard)
-  @Roles('GESTOR')
+  @Roles('MANAGER')
   @ApiOperation({ summary: 'Update route (manager only)' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: UpdateLinhaDto })
-  updateLinha(
+  @ApiBody({ type: UpdateRouteDto })
+  updateRoute(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() dto: UpdateLinhaDto,
+    @Body() dto: UpdateRouteDto,
   ) {
-    return this.fleet.updateLinha(user.municipalityId, id, dto);
+    return this.fleet.updateRoute(user.municipalityId, id, dto);
   }
 
   @Get('buses/mine')
   @UseGuards(RolesGuard)
-  @Roles('MOTORISTA')
+  @Roles('DRIVER')
   @ApiOperation({ summary: 'List buses registered by driver' })
   listMyBuses(@CurrentUser() user: JwtPayload) {
-    return this.fleet.listOnibusByMotorista(user.municipalityId, user.sub);
+    return this.fleet.listBusesByDriver(user.municipalityId, user.sub);
   }
 
   @Post('buses')
   @UseGuards(RolesGuard)
-  @Roles('MOTORISTA', 'GESTOR')
+  @Roles('DRIVER', 'MANAGER')
   @ApiOperation({
     summary: 'Create bus (driver or manager). Driver: saves driverId.',
   })
-  @ApiBody({ type: CreateOnibusDto })
-  createOnibus(@CurrentUser() user: JwtPayload, @Body() dto: CreateOnibusDto) {
-    const idMotorista = user.role === 'MOTORISTA' ? user.sub : undefined;
-    return this.fleet.createOnibus(user.municipalityId, dto, idMotorista);
+  @ApiBody({ type: CreateBusDto })
+  createBus(@CurrentUser() user: JwtPayload, @Body() dto: CreateBusDto) {
+    const driverId = user.role === 'DRIVER' ? user.sub : undefined;
+    return this.fleet.createBus(user.municipalityId, dto, driverId);
   }
 
   @Patch('buses/:id')
-  @UseGuards(LiderOnibusGuard)
+  @UseGuards(BusLeaderGuard)
   @ApiOperation({
     summary: 'Update bus (driver, manager or route leader)',
   })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: UpdateOnibusDto })
-  updateOnibus(
+  @ApiBody({ type: UpdateBusDto })
+  updateBus(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() dto: UpdateOnibusDto,
+    @Body() dto: UpdateBusDto,
   ) {
-    return this.fleet.updateOnibus(user.municipalityId, id, dto);
+    return this.fleet.updateBus(user.municipalityId, id, dto);
   }
 }

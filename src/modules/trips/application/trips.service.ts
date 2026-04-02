@@ -12,8 +12,8 @@ import * as schema from '../../../shared/database/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
 const TRIP_LOCATION_PREFIX = 'trip:location:';
-const TRIP_ALERTA_PREFIX = 'trip:alerta:';
-const ALERTA_TTL = 300; // 5 min
+const TRIP_ALERT_PREFIX = 'trip:alert:';
+const ALERT_TTL = 300; // 5 min
 
 @Injectable()
 export class TripsService {
@@ -22,301 +22,313 @@ export class TripsService {
     @InjectRedis() private redis: Redis,
   ) {}
 
-  async createViagem(dto: {
-    idViagem: string;
-    dataViagem: string;
-    turno: string;
-    direcao: 'IDA' | 'VOLTA';
-    idLinha: string;
-    idOnibus: string;
-    idMotorista?: string;
-    capacidadeReal: number;
-    aberturaVotacao: string;
-    fechamentoVotacao: string;
-    lideresIds?: string[];
+  async createTrip(dto: {
+    tripId: string;
+    tripDate: string;
+    shift: string;
+    direction: 'OUTBOUND' | 'INBOUND';
+    routeId: string;
+    busId: string;
+    driverId?: string;
+    realCapacity: number;
+    votingOpen: string;
+    votingClose: string;
+    leaderIds?: string[];
   }) {
-    const [viagem] = await this.db
-      .insert(schema.viagens)
+    const [trip] = await this.db
+      .insert(schema.trips)
       .values({
-        idViagem: dto.idViagem,
-        dataViagem: dto.dataViagem,
-        turno: dto.turno,
-        direcao: dto.direcao,
-        idLinha: dto.idLinha,
-        idOnibus: dto.idOnibus,
-        idMotorista: dto.idMotorista ?? null,
-        capacidadeReal: dto.capacidadeReal,
-        aberturaVotacao: new Date(dto.aberturaVotacao),
-        fechamentoVotacao: new Date(dto.fechamentoVotacao),
-        lideresIds: dto.lideresIds ?? [],
+        id: dto.tripId,
+        tripDate: dto.tripDate,
+        shift: dto.shift,
+        direction: dto.direction,
+        routeId: dto.routeId,
+        busId: dto.busId,
+        driverId: dto.driverId ?? null,
+        actualCapacity: dto.realCapacity,
+        votingOpenAt: new Date(dto.votingOpen),
+        votingCloseAt: new Date(dto.votingClose),
+        leaderIds: dto.leaderIds ?? [],
       })
       .returning();
-    return viagem;
+    return trip;
   }
 
-  async getViagem(idViagem: string) {
-    const [viagem] = await this.db
+  async getTrip(tripId: string) {
+    const [trip] = await this.db
       .select()
-      .from(schema.viagens)
-      .where(eq(schema.viagens.idViagem, idViagem));
-    return viagem;
+      .from(schema.trips)
+      .where(eq(schema.trips.id, tripId));
+    return trip;
   }
 
-  async listViagensAbertas() {
+  async listOpenTrips() {
     const now = new Date();
-    return this.db
-      .select()
-      .from(schema.viagens)
+    const rows = await this.db
+      .select({
+        trip: schema.trips,
+        route: schema.routes,
+        bus: schema.buses,
+      })
+      .from(schema.trips)
+      .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
+      .leftJoin(schema.buses, eq(schema.trips.busId, schema.buses.id))
       .where(
         and(
-          eq(schema.viagens.status, 'ABERTA_PARA_RESERVA'),
-          lte(schema.viagens.aberturaVotacao, now),
-          gte(schema.viagens.fechamentoVotacao, now),
+          eq(schema.trips.status, 'OPEN_FOR_RESERVATION'),
+          lte(schema.trips.votingOpenAt, now),
+          gte(schema.trips.votingCloseAt, now),
         ),
       );
+
+    return rows.map((r) => ({
+      ...r.trip,
+      route: r.route,
+      bus: r.bus,
+    }));
   }
 
-  async updateViagem(
-    idViagem: string,
+  async updateTrip(
+    tripId: string,
     dto: Partial<{
-      dataViagem: string;
-      turno: string;
-      direcao: 'IDA' | 'VOLTA';
-      idLinha: string;
-      idOnibus: string;
-      idMotorista: string | null;
-      capacidadeReal: number;
-      aberturaVotacao: string;
-      fechamentoVotacao: string;
-      lideresIds: string[];
+      tripDate: string;
+      shift: string;
+      direction: 'OUTBOUND' | 'INBOUND';
+      routeId: string;
+      busId: string;
+      driverId: string | null;
+      realCapacity: number;
+      votingOpen: string;
+      votingClose: string;
+      leaderIds: string[];
       status: string;
     }>,
   ) {
     const updates: Record<string, unknown> = {};
-    if (dto.dataViagem !== undefined) updates.dataViagem = dto.dataViagem;
-    if (dto.turno !== undefined) updates.turno = dto.turno;
-    if (dto.direcao !== undefined) updates.direcao = dto.direcao;
-    if (dto.idLinha !== undefined) updates.idLinha = dto.idLinha;
-    if (dto.idOnibus !== undefined) updates.idOnibus = dto.idOnibus;
-    if (dto.idMotorista !== undefined) updates.idMotorista = dto.idMotorista;
-    if (dto.capacidadeReal !== undefined)
-      updates.capacidadeReal = dto.capacidadeReal;
-    if (dto.aberturaVotacao !== undefined)
-      updates.aberturaVotacao = new Date(dto.aberturaVotacao);
-    if (dto.fechamentoVotacao !== undefined)
-      updates.fechamentoVotacao = new Date(dto.fechamentoVotacao);
-    if (dto.lideresIds !== undefined) updates.lideresIds = dto.lideresIds;
+    if (dto.tripDate !== undefined) updates.tripDate = dto.tripDate;
+    if (dto.shift !== undefined) updates.shift = dto.shift;
+    if (dto.direction !== undefined) updates.direction = dto.direction;
+    if (dto.routeId !== undefined) updates.routeId = dto.routeId;
+    if (dto.busId !== undefined) updates.busId = dto.busId;
+    if (dto.driverId !== undefined) updates.driverId = dto.driverId;
+    if (dto.realCapacity !== undefined)
+      updates.actualCapacity = dto.realCapacity;
+    if (dto.votingOpen !== undefined)
+      updates.votingOpenAt = new Date(dto.votingOpen);
+    if (dto.votingClose !== undefined)
+      updates.votingCloseAt = new Date(dto.votingClose);
+    if (dto.leaderIds !== undefined) updates.leaderIds = dto.leaderIds;
     if (dto.status !== undefined) updates.status = dto.status;
 
-    const [viagem] = await this.db
-      .update(schema.viagens)
+    const [trip] = await this.db
+      .update(schema.trips)
       .set(updates as Record<string, never>)
-      .where(eq(schema.viagens.idViagem, idViagem))
+      .where(eq(schema.trips.id, tripId))
       .returning();
-    if (!viagem) throw new NotFoundException('Trip not found');
-    return viagem;
+    if (!trip) throw new NotFoundException('Trip not found');
+    return trip;
   }
 
-  async triggerAlertaConfirmacao(
-    idViagem: string,
+  async triggerConfirmationAlert(
+    tripId: string,
     userId: string,
     municipalityId: string,
   ) {
-    const [viagem] = await this.db
+    const [trip] = await this.db
       .select()
-      .from(schema.viagens)
-      .where(eq(schema.viagens.idViagem, idViagem));
-    if (!viagem) throw new NotFoundException('Trip not found');
+      .from(schema.trips)
+      .where(eq(schema.trips.id, tripId));
+    if (!trip) throw new NotFoundException('Trip not found');
 
     const isLeader =
-      Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
-    const [motorista] = viagem.idMotorista
+      Array.isArray(trip.leaderIds) && trip.leaderIds.includes(userId);
+    const [driver] = trip.driverId
       ? await this.db
           .select()
-          .from(schema.usuarios)
-          .where(eq(schema.usuarios.id, viagem.idMotorista))
+          .from(schema.users)
+          .where(eq(schema.users.id, trip.driverId))
       : [null];
-    const isMotorista = motorista?.id === userId;
+    const isDriver = driver?.id === userId;
 
-    const [linha] = await this.db
+    const [route] = await this.db
       .select()
-      .from(schema.linhas)
-      .where(eq(schema.linhas.id, viagem.idLinha));
-    if (linha?.idPrefeitura !== municipalityId) {
+      .from(schema.routes)
+      .where(eq(schema.routes.id, trip.routeId));
+    if (route?.municipalityId !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
-    if (!isLeader && !isMotorista) {
+    if (!isLeader && !isDriver) {
       throw new ForbiddenException('Only leader or driver can trigger alert');
     }
 
-    const key = `${TRIP_ALERTA_PREFIX}${idViagem}`;
-    await this.redis.setex(key, ALERTA_TTL, Date.now().toString());
+    const key = `${TRIP_ALERT_PREFIX}${tripId}`;
+    await this.redis.setex(key, ALERT_TTL, Date.now().toString());
 
-    return { message: 'Confirmation alert triggered', expiresIn: ALERTA_TTL };
+    return { message: 'Confirmation alert triggered', expiresIn: ALERT_TTL };
   }
 
-  async encerrarEPunir(
-    idViagem: string,
+  async finishAndPunish(
+    tripId: string,
     userId: string,
     municipalityId: string,
   ) {
-    const [viagem] = await this.db
+    const [trip] = await this.db
       .select()
-      .from(schema.viagens)
-      .where(eq(schema.viagens.idViagem, idViagem));
-    if (!viagem) throw new NotFoundException('Trip not found');
+      .from(schema.trips)
+      .where(eq(schema.trips.id, tripId));
+    if (!trip) throw new NotFoundException('Trip not found');
 
     const isLeader =
-      Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
-    const [linha] = await this.db
+      Array.isArray(trip.leaderIds) && trip.leaderIds.includes(userId);
+    const [route] = await this.db
       .select()
-      .from(schema.linhas)
-      .where(eq(schema.linhas.id, viagem.idLinha));
-    if (linha?.idPrefeitura !== municipalityId) {
+      .from(schema.routes)
+      .where(eq(schema.routes.id, trip.routeId));
+    if (route?.municipalityId !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
     if (!isLeader) {
       throw new ForbiddenException('Only leader can confirm absences');
     }
 
-    const reservas = await this.db
+    const reservations = await this.db
       .select()
-      .from(schema.reservas)
-      .where(eq(schema.reservas.idViagem, idViagem));
+      .from(schema.reservations)
+      .where(eq(schema.reservations.tripId, tripId));
 
-    for (const r of reservas) {
-      if (r.status === 'CONFIRMADA') {
+    for (const r of reservations) {
+      if (r.status === 'CONFIRMED') {
         await this.db
-          .update(schema.reservas)
-          .set({ status: 'FALTOU' })
-          .where(eq(schema.reservas.id, r.id));
+          .update(schema.reservations)
+          .set({ status: 'ABSENT' })
+          .where(eq(schema.reservations.id, r.id));
 
         const [user] = await this.db
-          .select({ nivelPrioridade: schema.usuarios.nivelPrioridade })
-          .from(schema.usuarios)
-          .where(eq(schema.usuarios.id, r.idUsuario));
-        const newLevel = Math.min(3, (user?.nivelPrioridade ?? 1) + 1);
+          .select({ priorityLevel: schema.users.priorityLevel })
+          .from(schema.users)
+          .where(eq(schema.users.id, r.userId));
+        const newLevel = Math.min(3, (user?.priorityLevel ?? 1) + 1);
         const blockUntil = new Date();
         blockUntil.setDate(blockUntil.getDate() + 7);
 
         await this.db
-          .update(schema.usuarios)
+          .update(schema.users)
           .set({
-            nivelPrioridade: newLevel,
-            bloqueioAssentoAte: blockUntil,
+            priorityLevel: newLevel,
+            seatBlockUntil: blockUntil,
           })
-          .where(eq(schema.usuarios.id, r.idUsuario));
+          .where(eq(schema.users.id, r.userId));
       }
     }
 
     await this.db
-      .update(schema.viagens)
-      .set({ status: 'FINALIZADA' })
-      .where(eq(schema.viagens.idViagem, idViagem));
+      .update(schema.trips)
+      .set({ status: 'FINISHED' })
+      .where(eq(schema.trips.id, tripId));
 
     return { message: 'Absences confirmed and penalties applied' };
   }
 
-  async transbordo(
-    idViagem: string,
-    tripIdDestino: string,
+  async relocation(
+    tripId: string,
+    destinationTripId: string,
     userId: string,
     municipalityId: string,
   ) {
-    const [viagemOrigem] = await this.db
+    const [originTrip] = await this.db
       .select()
-      .from(schema.viagens)
-      .where(eq(schema.viagens.idViagem, idViagem));
-    if (!viagemOrigem) throw new NotFoundException('Origin trip not found');
+      .from(schema.trips)
+      .where(eq(schema.trips.id, tripId));
+    if (!originTrip) throw new NotFoundException('Origin trip not found');
 
-    const [viagemDestino] = await this.db
+    const [destinationTrip] = await this.db
       .select()
-      .from(schema.viagens)
-      .where(eq(schema.viagens.idViagem, tripIdDestino));
-    if (!viagemDestino) throw new NotFoundException('Destination trip not found');
+      .from(schema.trips)
+      .where(eq(schema.trips.id, destinationTripId));
+    if (!destinationTrip) throw new NotFoundException('Destination trip not found');
 
     const isLeader =
-      Array.isArray(viagemOrigem.lideresIds) &&
-      viagemOrigem.lideresIds.includes(userId);
-    const [linha] = await this.db
+      Array.isArray(originTrip.leaderIds) &&
+      originTrip.leaderIds.includes(userId);
+    const [route] = await this.db
       .select()
-      .from(schema.linhas)
-      .where(eq(schema.linhas.id, viagemOrigem.idLinha));
-    if (linha?.idPrefeitura !== municipalityId) {
+      .from(schema.routes)
+      .where(eq(schema.routes.id, originTrip.routeId));
+    if (route?.municipalityId !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
     if (!isLeader) {
       throw new ForbiddenException('Only leader can relocate');
     }
 
-    const reservas = await this.db
+    const reservations = await this.db
       .select()
-      .from(schema.reservas)
-      .where(eq(schema.reservas.idViagem, idViagem));
+      .from(schema.reservations)
+      .where(eq(schema.reservations.tripId, tripId));
 
-    const ocupadosDestino = await this.db
-      .select({ numeroAssento: schema.reservas.numeroAssento })
-      .from(schema.reservas)
-      .where(eq(schema.reservas.idViagem, tripIdDestino));
+    const occupiedDestination = await this.db
+      .select({ seatNumber: schema.reservations.seatNumber })
+      .from(schema.reservations)
+      .where(eq(schema.reservations.tripId, destinationTripId));
 
-    const ocupadosSet = new Set(
-      ocupadosDestino.map((o) => o.numeroAssento).filter((n): n is number => n != null),
+    const occupiedSet = new Set(
+      occupiedDestination.map((o) => o.seatNumber).filter((n): n is number => n != null),
     );
 
     let seat = 1;
-    for (const r of reservas) {
-      let newSeat: number | null = r.numeroAssento;
-      if (r.numeroAssento != null) {
-        while (ocupadosSet.has(seat)) seat++;
+    for (const r of reservations) {
+      let newSeat: number | null = r.seatNumber;
+      if (r.seatNumber != null) {
+        while (occupiedSet.has(seat)) seat++;
         newSeat = seat;
-        ocupadosSet.add(seat);
+        occupiedSet.add(seat);
       }
 
       await this.db
-        .update(schema.reservas)
+        .update(schema.reservations)
         .set({
-          idViagem: tripIdDestino,
-          numeroAssento: newSeat,
+          tripId: destinationTripId,
+          seatNumber: newSeat,
         })
-        .where(eq(schema.reservas.id, r.id));
+        .where(eq(schema.reservations.id, r.id));
     }
 
     await this.db
-      .update(schema.viagens)
-      .set({ status: 'CANCELADA' })
-      .where(eq(schema.viagens.idViagem, idViagem));
+      .update(schema.trips)
+      .set({ status: 'CANCELLED' })
+      .where(eq(schema.trips.id, tripId));
 
     return { message: 'Relocation completed' };
   }
 
   async updateLocation(
-    idViagem: string,
+    tripId: string,
     lat: number,
     lng: number,
     userId: string,
     municipalityId: string,
   ) {
-    const [viagem] = await this.db
+    const [trip] = await this.db
       .select()
-      .from(schema.viagens)
-      .where(eq(schema.viagens.idViagem, idViagem));
-    if (!viagem) throw new NotFoundException('Trip not found');
+      .from(schema.trips)
+      .where(eq(schema.trips.id, tripId));
+    if (!trip) throw new NotFoundException('Trip not found');
 
-    const isMotorista = viagem.idMotorista === userId;
+    const isDriver = trip.driverId === userId;
     const isLeader =
-      Array.isArray(viagem.lideresIds) && viagem.lideresIds.includes(userId);
-    const [linha] = await this.db
+      Array.isArray(trip.leaderIds) && trip.leaderIds.includes(userId);
+    const [route] = await this.db
       .select()
-      .from(schema.linhas)
-      .where(eq(schema.linhas.id, viagem.idLinha));
-    if (linha?.idPrefeitura !== municipalityId) {
+      .from(schema.routes)
+      .where(eq(schema.routes.id, trip.routeId));
+    if (route?.municipalityId !== municipalityId) {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
-    if (!isMotorista && !isLeader) {
+    if (!isDriver && !isLeader) {
       throw new ForbiddenException('Only driver or leader can update location');
     }
 
-    const key = `${TRIP_LOCATION_PREFIX}${idViagem}`;
+    const key = `${TRIP_LOCATION_PREFIX}${tripId}`;
     const payload = JSON.stringify({
       lat,
       lng,
@@ -327,8 +339,8 @@ export class TripsService {
     return { message: 'Location updated' };
   }
 
-  async getLocation(idViagem: string) {
-    const key = `${TRIP_LOCATION_PREFIX}${idViagem}`;
+  async getLocation(tripId: string) {
+    const key = `${TRIP_LOCATION_PREFIX}${tripId}`;
     const raw = await this.redis.get(key);
     if (!raw) return null;
     try {
@@ -338,8 +350,8 @@ export class TripsService {
     }
   }
 
-  async getAlertaStatus(idViagem: string) {
-    const key = `${TRIP_ALERTA_PREFIX}${idViagem}`;
+  async getAlertStatus(tripId: string) {
+    const key = `${TRIP_ALERT_PREFIX}${tripId}`;
     const ttl = await this.redis.ttl(key);
     if (ttl <= 0) return { active: false };
     return { active: true, expiresIn: ttl };

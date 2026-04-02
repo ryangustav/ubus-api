@@ -17,7 +17,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ReservationsService } from './application/reservations.service';
-import { CreateReservationDto, UpdateReservationDto } from './dto/reservar.dto';
+import { CreateReserveDto, UpdateReservationDto } from './dto/reserve.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/guards/roles.decorator';
@@ -29,28 +29,28 @@ export class ReservationsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ALUNO')
+  @Roles('STUDENT')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Reserve seat (student only)' })
-  @ApiBody({ type: CreateReservationDto })
+  @ApiBody({ type: CreateReserveDto })
   create(
     @Req() req: { user: { sub: string } },
-    @Body() dto: CreateReservationDto,
+    @Body() dto: CreateReserveDto,
   ) {
     return this.reservations.create({
-      idViagem: dto.tripId,
-      idUsuario: req.user.sub,
-      numeroAssento: dto.seatNumber ?? undefined,
-      isCarona: dto.rideShare,
+      tripId: dto.tripId,
+      userId: req.user.sub,
+      seatNumber: dto.seatNumber ?? undefined,
+      isRideShare: dto.isRideShare,
     });
   }
 
-  @Get('minhas')
+  @Get('mine')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List my reservations with trip details' })
-  listMinhas(@Req() req: { user: { sub: string } }) {
-    return this.reservations.findMinhas(req.user.sub);
+  listMyReservations(@Req() req: { user: { sub: string } }) {
+    return this.reservations.findMyReservations(req.user.sub);
   }
 
   @Get('trip/:tripId')
@@ -59,7 +59,7 @@ export class ReservationsController {
   @ApiOperation({ summary: 'List trip reservations' })
   @ApiParam({ name: 'tripId', example: '20260228-20120-M' })
   listByTrip(@Param('tripId') tripId: string) {
-    return this.reservations.findByViagem(tripId);
+    return this.reservations.findByTrip(tripId);
   }
 
   @Get('trip/:tripId/occupied-seats')
@@ -68,7 +68,7 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Occupied seats (for map)' })
   @ApiParam({ name: 'tripId', example: '20260228-20120-M' })
   getOccupiedSeats(@Param('tripId') tripId: string) {
-    return this.reservations.getAssentosOcupados(tripId);
+    return this.reservations.getOccupiedSeats(tripId);
   }
 
   @Get(':id')
@@ -82,7 +82,7 @@ export class ReservationsController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ALUNO')
+  @Roles('STUDENT')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update seat (student only)' })
   @ApiParam({ name: 'id', example: 'uuid' })
@@ -94,14 +94,14 @@ export class ReservationsController {
   ) {
     return this.reservations.update(
       id,
-      { numeroAssento: dto.seatNumber, status: dto.status },
+      { seatNumber: dto.seatNumber, status: dto.status },
       req.user.sub,
     );
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ALUNO')
+  @Roles('STUDENT')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cancel reservation (student only)' })
   @ApiParam({ name: 'id', example: 'uuid' })

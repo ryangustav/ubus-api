@@ -44,35 +44,35 @@ export class AuthService {
       throw new ConflictException(parsed.error.flatten().fieldErrors);
     }
 
-    const cpfNorm = normalizeCpf(parsed.data.cpf);
+    const normalizedCpf = normalizeCpf(parsed.data.cpf);
     const { municipalityId } = parsed.data;
 
-    const [prefeitura] = await this.db
+    const [municipality] = await this.db
       .select()
-      .from(schema.prefeituras)
-      .where(eq(schema.prefeituras.id, municipalityId));
-    if (!prefeitura) throw new ConflictException('Municipality not found');
-    if (prefeitura.ativo === false) {
+      .from(schema.municipalities)
+      .where(eq(schema.municipalities.id, municipalityId));
+    if (!municipality) throw new ConflictException('Municipality not found');
+    if (municipality.active === false) {
       throw new ConflictException('Registrations paused for this municipality');
     }
 
     const [existingEmail] = await this.db
       .select()
-      .from(schema.usuarios)
+      .from(schema.users)
       .where(
         and(
-          eq(schema.usuarios.email, parsed.data.email),
-          eq(schema.usuarios.idPrefeitura, municipalityId),
+          eq(schema.users.email, parsed.data.email),
+          eq(schema.users.municipalityId, municipalityId),
         ),
       );
 
     const [existingCpf] = await this.db
       .select()
-      .from(schema.usuarios)
+      .from(schema.users)
       .where(
         and(
-          eq(schema.usuarios.cpf, cpfNorm),
-          eq(schema.usuarios.idPrefeitura, municipalityId),
+          eq(schema.users.cpf, normalizedCpf),
+          eq(schema.users.municipalityId, municipalityId),
         ),
       );
 
@@ -84,37 +84,41 @@ export class AuthService {
       throw new ConflictException('CPF already registered in this municipality');
     }
 
-    if (parsed.data.role === 'GESTOR') {
-      const [prefeitura] = await this.db
+    if (parsed.data.role === 'MANAGER') {
+      const [munity] = await this.db
         .select()
-        .from(schema.prefeituras)
-        .where(eq(schema.prefeituras.id, municipalityId));
-      if (prefeitura?.idGestor) {
+        .from(schema.municipalities)
+        .where(eq(schema.municipalities.id, municipalityId));
+      if (munity?.managerId) {
         throw new ConflictException('Municipality already has a manager');
       }
     }
 
     const hash = await bcrypt.hash(parsed.data.password, 10);
     const [user] = await this.db
-      .insert(schema.usuarios)
+      .insert(schema.users)
       .values({
-        idPrefeitura: municipalityId,
-        cpf: cpfNorm,
-        nome: parsed.data.name,
+        municipalityId: municipalityId,
+        cpf: normalizedCpf,
+        name: parsed.data.name,
         email: parsed.data.email,
-        senhaHash: hash,
-        telefone: parsed.data.phone,
+        passwordHash: hash,
+        phone: parsed.data.phone,
         role: parsed.data.role,
-        nivelPrioridade: parsed.data.priorityLevel,
-        idLinhaPadrao: parsed.data.defaultRouteId ?? null,
+        priorityLevel: parsed.data.priorityLevel,
+        defaultRouteId: parsed.data.defaultRouteId ?? null,
+        profilePictureUrl: parsed.data.photoUrl ?? null,
+        scheduleUrl: parsed.data.gradeFileUrl ?? null,
+        residenceProofUrl: parsed.data.residenciaFileUrl ?? null,
+        needsWheelchair: parsed.data.needsWheelchair ?? false,
       })
       .returning();
 
-    if (parsed.data.role === 'GESTOR') {
+    if (parsed.data.role === 'MANAGER') {
       await this.db
-        .update(schema.prefeituras)
-        .set({ idGestor: user.id })
-        .where(eq(schema.prefeituras.id, municipalityId));
+        .update(schema.municipalities)
+        .set({ managerId: user.id })
+        .where(eq(schema.municipalities.id, municipalityId));
     }
 
     return this.login({
@@ -129,30 +133,30 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const [user] = await this.db
+    const [data] = await this.db
       .select({
-        user: schema.usuarios,
-        prefeitura: schema.prefeituras,
+        user: schema.users,
+        municipality: schema.municipalities,
       })
-      .from(schema.usuarios)
+      .from(schema.users)
       .leftJoin(
-        schema.prefeituras,
-        eq(schema.usuarios.idPrefeitura, schema.prefeituras.id),
+        schema.municipalities,
+        eq(schema.users.municipalityId, schema.municipalities.id),
       )
-      .where(eq(schema.usuarios.email, parsed.data.email));
+      .where(eq(schema.users.email, parsed.data.email));
 
-    if (!user?.user) {
+    if (!data?.user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const u = user.user;
-    if (user.prefeitura?.ativo === false) {
+    const u = data.user;
+    if (data.municipality?.active === false) {
       throw new UnauthorizedException(
         'Municipality paused. Contact administrator.',
       );
     }
 
-    const valid = await bcrypt.compare(parsed.data.password, u.senhaHash);
+    const valid = await bcrypt.compare(parsed.data.password, u.passwordHash);
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -160,8 +164,8 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: u.id,
       email: u.email,
-      role: u.role ?? 'ALUNO',
-      municipalityId: u.idPrefeitura,
+      role: u.role ?? 'STUDENT',
+      municipalityId: u.municipalityId,
     };
 
     const accessToken = this.jwt.sign(payload, {
@@ -173,10 +177,13 @@ export class AuthService {
       user: {
         id: u.id,
         email: u.email,
-        name: u.nome,
+        name: u.name,
         role: u.role,
-        municipalityId: u.idPrefeitura,
-        priorityLevel: u.nivelPrioridade,
+        cpf: u.cpf,
+        phone: u.phone,
+        municipalityId: u.municipalityId,
+        priorityLevel: u.priorityLevel,
+        defaultRouteId: u.defaultRouteId,
       },
     };
   }
@@ -184,11 +191,11 @@ export class AuthService {
   async sendPasswordResetEmail(userId: string): Promise<{ message: string }> {
     const [user] = await this.db
       .select({
-        id: schema.usuarios.id,
-        email: schema.usuarios.email,
+        id: schema.users.id,
+        email: schema.users.email,
       })
-      .from(schema.usuarios)
-      .where(eq(schema.usuarios.id, userId));
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
 
     if (!user) throw new UnauthorizedException('User not found');
 
@@ -229,9 +236,9 @@ export class AuthService {
 
     const hash = await bcrypt.hash(password, 10);
     await this.db
-      .update(schema.usuarios)
-      .set({ senhaHash: hash })
-      .where(eq(schema.usuarios.id, userId));
+      .update(schema.users)
+      .set({ passwordHash: hash })
+      .where(eq(schema.users.id, userId));
 
     await this.redis.del(redisKey);
 

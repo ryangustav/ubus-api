@@ -67,6 +67,10 @@ RUN mkdir -p drizzle/meta && cat > drizzle/meta/_journal.json << 'JOURNAL'
 JOURNAL
 RUN echo "=== Drizzle directory ===" && ls -R drizzle/
 
+RUN addgroup -g 1001 app && adduser -u 1001 -G app -s /bin/sh -D app
+RUN chown -R app:app /app
+USER app
+
 EXPOSE 3001
 
 CMD ["node", "dist/main.js"]

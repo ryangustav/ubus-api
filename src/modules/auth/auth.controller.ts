@@ -22,6 +22,7 @@ import { PasswordRedefinitionDto } from './dto/password-reset.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { JwtPayload } from './infrastructure/strategies/jwt.strategy';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -29,6 +30,7 @@ export class AuthController {
   constructor(private auth: AuthService) {}
 
   @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'User registration' })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({ status: 201, description: 'User created and returns token' })
@@ -38,6 +40,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Login' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({
@@ -64,6 +67,8 @@ export class AuthController {
   }
 
   @Get('password-email-preview')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Header('Content-Type', 'text/html')
   @ApiOperation({
     summary: '[Dev] Preview password reset email',

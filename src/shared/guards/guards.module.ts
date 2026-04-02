@@ -1,11 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 import { RolesGuard } from './roles.guard';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { LiderOnibusGuard } from './lider-onibus.guard';
+import { BusLeaderGuard } from './bus-leader.guard';
 
 @Global()
 @Module({
-  providers: [JwtAuthGuard, RolesGuard, LiderOnibusGuard],
-  exports: [JwtAuthGuard, RolesGuard, LiderOnibusGuard],
+  providers: [JwtAuthGuard, RolesGuard, BusLeaderGuard],
+  exports: [JwtAuthGuard, RolesGuard, BusLeaderGuard],
 })
 export class GuardsModule {}

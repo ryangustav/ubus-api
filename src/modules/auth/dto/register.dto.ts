@@ -26,10 +26,10 @@ export class RegisterDto {
   phone?: string;
 
   @ApiPropertyOptional({
-    enum: ['GESTOR', 'MOTORISTA', 'LIDER', 'ALUNO', 'CARONISTA'],
-    default: 'ALUNO',
+    enum: ['MANAGER', 'DRIVER', 'LEADER', 'STUDENT', 'RIDE_SHARE'],
+    default: 'STUDENT',
   })
-  role?: 'GESTOR' | 'MOTORISTA' | 'LIDER' | 'ALUNO' | 'CARONISTA';
+  role?: 'MANAGER' | 'DRIVER' | 'LEADER' | 'STUDENT' | 'RIDE_SHARE';
 
   @ApiPropertyOptional({
     example: 1,
@@ -43,4 +43,16 @@ export class RegisterDto {
       'For ALUNO only. Manager and Driver do not have. Student of one route can be ride-share on another.',
   })
   defaultRouteId?: string;
+
+  @ApiPropertyOptional({ default: false })
+  needsWheelchair?: boolean;
+
+  @ApiPropertyOptional({ example: 'https://storage.com/photo.jpg' })
+  photoUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://storage.com/grade.pdf' })
+  gradeFileUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://storage.com/residencia.pdf' })
+  residenciaFileUrl?: string;
 }

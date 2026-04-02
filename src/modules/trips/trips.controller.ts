@@ -15,8 +15,8 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TripsService } from './application/trips.service';
-import { CreateViagemDto } from './dto/create-viagem.dto';
-import { UpdateViagemDto } from './dto/update-viagem.dto';
+import { CreateTripDto } from './dto/create-trip.dto';
+import { UpdateTripDto } from './dto/update-trip.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/guards/roles.decorator';
@@ -31,63 +31,66 @@ export class TripsController {
   @Get('open')
   @ApiOperation({ summary: 'Trips with open voting (student can see)' })
   listOpen() {
-    return this.trips.listViagensAbertas();
+    return this.trips.listOpenTrips();
   }
 
   @Get(':tripId')
   @ApiOperation({ summary: 'Get trip by Smart Key' })
   @ApiParam({ name: 'tripId', example: '20260228-20120-M' })
   getTrip(@Param('tripId') tripId: string) {
-    return this.trips.getViagem(tripId);
+    return this.trips.getTrip(tripId);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('GESTOR')
+  @Roles('MANAGER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create trip (manager only)' })
-  @ApiBody({ type: CreateViagemDto })
-  createViagem(@Body() dto: CreateViagemDto) {
-    return this.trips.createViagem(dto);
+  @ApiBody({ type: CreateTripDto })
+  createTrip(@Body() dto: CreateTripDto) {
+    return this.trips.createTrip(dto);
   }
 
   @Patch(':tripId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('GESTOR')
+  @Roles('MANAGER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update trip (manager only)' })
   @ApiParam({ name: 'tripId' })
-  @ApiBody({ type: UpdateViagemDto })
-  updateTrip(
-    @Param('tripId') tripId: string,
-    @Body() dto: UpdateViagemDto,
-  ) {
-    return this.trips.updateViagem(tripId, dto);
+  @ApiBody({ type: UpdateTripDto })
+  updateTrip(@Param('tripId') tripId: string, @Body() dto: UpdateTripDto) {
+    return this.trips.updateTrip(tripId, dto);
   }
 
-  @Post(':tripId/alerta-confirmacao')
+  @Post(':tripId/confirmation-alert')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Trigger confirmation alert (leader/driver)' })
   @ApiParam({ name: 'tripId' })
-  triggerAlerta(@Param('tripId') tripId: string, @CurrentUser() user: JwtPayload) {
-    return this.trips.triggerAlertaConfirmacao(
+  triggerAlert(
+    @Param('tripId') tripId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.trips.triggerConfirmationAlert(
       tripId,
       user.sub,
       user.municipalityId,
     );
   }
 
-  @Post(':tripId/encerrar-e-punir')
+  @Post(':tripId/finish-and-punish')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Confirm absences and apply penalties (leader)' })
   @ApiParam({ name: 'tripId' })
-  encerrarEPunir(@Param('tripId') tripId: string, @CurrentUser() user: JwtPayload) {
-    return this.trips.encerrarEPunir(tripId, user.sub, user.municipalityId);
+  finishAndPunish(
+    @Param('tripId') tripId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.trips.finishAndPunish(tripId, user.sub, user.municipalityId);
   }
 
-  @Post(':tripId/transbordo')
+  @Post(':tripId/relocation')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Relocate students to another trip (leader)' })
@@ -95,18 +98,18 @@ export class TripsController {
   @ApiBody({
     schema: {
       type: 'object',
-      properties: { tripIdDestino: { type: 'string' } },
-      required: ['tripIdDestino'],
+      properties: { destinationTripId: { type: 'string' } },
+      required: ['destinationTripId'],
     },
   })
-  transbordo(
+  relocation(
     @Param('tripId') tripId: string,
-    @Body() body: { tripIdDestino: string },
+    @Body() body: { destinationTripId: string },
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.trips.transbordo(
+    return this.trips.relocation(
       tripId,
-      body.tripIdDestino,
+      body.destinationTripId,
       user.sub,
       user.municipalityId,
     );
@@ -121,13 +124,13 @@ export class TripsController {
     return this.trips.getLocation(tripId);
   }
 
-  @Get(':tripId/alerta-status')
+  @Get(':tripId/alert-status')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Check if confirmation alert is active' })
   @ApiParam({ name: 'tripId' })
-  getAlertaStatus(@Param('tripId') tripId: string) {
-    return this.trips.getAlertaStatus(tripId);
+  getAlertStatus(@Param('tripId') tripId: string) {
+    return this.trips.getAlertStatus(tripId);
   }
 
   @Patch(':tripId/location')

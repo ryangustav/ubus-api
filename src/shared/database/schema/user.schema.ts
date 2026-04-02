@@ -6,36 +6,42 @@ import {
   timestamp,
   integer,
   unique,
+  boolean,
 } from 'drizzle-orm/pg-core';
-import { roleUsuarioEnum, statusCadastroEnum } from './enums';
-import { prefeituras } from './prefeitura.schema';
-import { linhas } from './fleet.schema';
+import { userRoleEnum, registrationStatusEnum } from './enums';
+import { municipalities } from './municipality.schema';
+import { routes, points } from './fleet.schema';
 
-export const usuarios = pgTable(
-  'usuarios',
+export const users = pgTable(
+  'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    idPrefeitura: uuid('id_prefeitura')
+    municipalityId: uuid('municipality_id')
       .notNull()
-      .references(() => prefeituras.id, { onDelete: 'cascade' }),
+      .references(() => municipalities.id, { onDelete: 'cascade' }),
     cpf: varchar('cpf', { length: 14 }).notNull(),
-    nome: varchar('nome', { length: 150 }).notNull(),
+    name: varchar('name', { length: 150 }).notNull(),
     email: varchar('email', { length: 150 }).notNull(),
-    senhaHash: varchar('senha_hash', { length: 255 }).notNull(),
-    telefone: varchar('telefone', { length: 20 }),
-    role: roleUsuarioEnum('role').default('ALUNO'),
-    nivelPrioridade: integer('nivel_prioridade'), // 1: Titular, 2: Univ. Caronista, 3: Caronista Comum
-    idLinhaPadrao: uuid('id_linha_padrao').references(() => linhas.id),
-    fotoPerfilUrl: text('foto_perfil_url'),
-    gradeHorarioUrl: text('grade_horario_url'),
-    statusCadastro: statusCadastroEnum('status_cadastro').default('PENDENTE'),
-    bloqueioAssentoAte: timestamp('bloqueio_assento_ate', {
+    passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+    phone: varchar('phone', { length: 20 }),
+    role: userRoleEnum('role').default('STUDENT'),
+    priorityLevel: integer('priority_level'), // 1: Holder, 2: Caronista Univ., 3: Common Caronista
+    defaultRouteId: uuid('default_route_id').references(() => routes.id),
+    profilePictureUrl: text('profile_picture_url'),
+    scheduleUrl: text('schedule_url'),
+    residenceProofUrl: text('residence_proof_url'),
+    needsWheelchair: boolean('needs_wheelchair').default(false),
+    registrationStatus: registrationStatusEnum('registration_status').default(
+      'PENDING',
+    ),
+    defaultPointId: uuid('default_point_id').references(() => points.id),
+    seatBlockUntil: timestamp('seat_block_until', {
       withTimezone: true,
     }),
-    criadoEm: timestamp('criado_em', { withTimezone: true }).defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
-    unique('uq_usuario_cpf_prefeitura').on(table.idPrefeitura, table.cpf),
-    unique('uq_usuario_email_prefeitura').on(table.idPrefeitura, table.email),
+    unique('uq_user_cpf_municipality').on(table.municipalityId, table.cpf),
+    unique('uq_user_email_municipality').on(table.municipalityId, table.email),
   ],
 );

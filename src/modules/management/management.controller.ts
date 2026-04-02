@@ -30,11 +30,17 @@ import type { JwtPayload } from '../auth/infrastructure/strategies/jwt.strategy'
 export class ManagementController {
   constructor(private management: ManagementService) {}
 
+  @Get('public')
+  @ApiOperation({ summary: 'List active municipalities (public)' })
+  listPublic() {
+    return this.management.listActivePublic();
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SUPER_ADMIN')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Register new city (super-admin only)' })
+  @ApiOperation({ summary: 'Register new municipality (super-admin only)' })
   @ApiBody({ type: CreateMunicipalityDto })
   create(@Body() dto: CreateMunicipalityDto) {
     return this.management.create(dto);

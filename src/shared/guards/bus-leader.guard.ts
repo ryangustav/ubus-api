@@ -6,10 +6,10 @@ import * as schema from '../database/schema';
 import { eq } from 'drizzle-orm';
 
 /**
- * Permite: GESTOR, MOTORISTA ou líder de alguma viagem que usa este ônibus.
+ * Allows: MANAGER, DRIVER or leader of some trip that uses this bus.
  */
 @Injectable()
-export class LiderOnibusGuard implements CanActivate {
+export class BusLeaderGuard implements CanActivate {
   constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -20,26 +20,26 @@ export class LiderOnibusGuard implements CanActivate {
     const user = req.user;
     if (!user?.sub || !user?.municipalityId) return false;
 
-    if (user.role === 'GESTOR' || user.role === 'MOTORISTA') return true;
+    if (user.role === 'MANAGER' || user.role === 'DRIVER') return true;
 
-    const idOnibus = req.params?.id;
-    if (!idOnibus) return false;
+    const busId = req.params?.id;
+    if (!busId) return false;
 
-    const [onibus] = await this.db
+    const [bus] = await this.db
       .select()
-      .from(schema.onibus)
-      .where(eq(schema.onibus.id, idOnibus));
+      .from(schema.buses)
+      .where(eq(schema.buses.id, busId));
 
-    if (!onibus || onibus.idPrefeitura !== user.municipalityId) return false;
+    if (!bus || bus.municipalityId !== user.municipalityId) return false;
 
-    const viagens = await this.db
-      .select({ lideresIds: schema.viagens.lideresIds })
-      .from(schema.viagens)
-      .where(eq(schema.viagens.idOnibus, idOnibus));
+    const trips = await this.db
+      .select({ leaderIds: schema.trips.leaderIds })
+      .from(schema.trips)
+      .where(eq(schema.trips.busId, busId));
 
     const userId = user.sub;
-    return viagens.some(
-      (v) => Array.isArray(v.lideresIds) && v.lideresIds.includes(userId),
+    return trips.some(
+      (v) => Array.isArray(v.leaderIds) && v.leaderIds.includes(userId),
     );
   }
 }

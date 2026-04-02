@@ -8,160 +8,168 @@ import { and, eq } from 'drizzle-orm';
 export class FleetService {
   constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
-  async listLinhas(idPrefeitura: string) {
+  async listRoutes(municipalityId: string) {
     return this.db
       .select()
-      .from(schema.linhas)
+      .from(schema.routes)
       .where(
         and(
-          eq(schema.linhas.idPrefeitura, idPrefeitura),
-          eq(schema.linhas.active, true),
+          eq(schema.routes.municipalityId, municipalityId),
+          eq(schema.routes.active, true),
         ),
       );
   }
 
-  async listOnibus(idPrefeitura: string) {
+  async listPointsByRoute(routeId: string) {
     return this.db
       .select()
-      .from(schema.onibus)
+      .from(schema.points)
+      .where(eq(schema.points.routeId, routeId))
+      .orderBy(schema.points.order);
+  }
+
+  async listBuses(municipalityId: string) {
+    return this.db
+      .select()
+      .from(schema.buses)
       .where(
         and(
-          eq(schema.onibus.idPrefeitura, idPrefeitura),
-          eq(schema.onibus.active, true),
+          eq(schema.buses.municipalityId, municipalityId),
+          eq(schema.buses.active, true),
         ),
       );
   }
 
-  async createLinha(
-    idPrefeitura: string,
+  async createRoute(
+    municipalityId: string,
     dto: {
-      nome: string;
-      descricao?: string;
-      diasDaSemana: number[];
-      horarioAberturaVotacao: string;
-      horarioFechamentoVotacao: string;
+      name: string;
+      description?: string;
+      weekDays: number[];
+      votingOpenTime: string;
+      votingCloseTime: string;
     },
   ) {
-    const [linha] = await this.db
-      .insert(schema.linhas)
+    const [route] = await this.db
+      .insert(schema.routes)
       .values({
-        idPrefeitura,
-        nome: dto.nome,
-        descricao: dto.descricao ?? null,
-        diasDaSemana: dto.diasDaSemana,
-        horarioAberturaVotacao: dto.horarioAberturaVotacao,
-        horarioFechamentoVotacao: dto.horarioFechamentoVotacao,
+        municipalityId,
+        name: dto.name,
+        description: dto.description ?? null,
+        weekDays: dto.weekDays,
+        votingOpenTime: dto.votingOpenTime,
+        votingCloseTime: dto.votingCloseTime,
       })
       .returning();
-    return linha;
+    return route;
   }
 
-  async updateLinha(
-    idPrefeitura: string,
+  async updateRoute(
+    municipalityId: string,
     id: string,
     dto: {
-      nome?: string;
-      descricao?: string;
-      diasDaSemana?: number[];
-      horarioAberturaVotacao?: string;
-      horarioFechamentoVotacao?: string;
+      name?: string;
+      description?: string;
+      weekDays?: number[];
+      votingOpenTime?: string;
+      votingCloseTime?: string;
       active?: boolean;
     },
   ) {
-    const updates: Partial<typeof schema.linhas.$inferInsert> = {};
-    if (dto.nome !== undefined) updates.nome = dto.nome;
-    if (dto.descricao !== undefined) updates.descricao = dto.descricao;
-    if (dto.diasDaSemana !== undefined) updates.diasDaSemana = dto.diasDaSemana;
-    if (dto.horarioAberturaVotacao !== undefined)
-      updates.horarioAberturaVotacao = dto.horarioAberturaVotacao;
-    if (dto.horarioFechamentoVotacao !== undefined)
-      updates.horarioFechamentoVotacao = dto.horarioFechamentoVotacao;
+    const updates: Partial<typeof schema.routes.$inferInsert> = {};
+    if (dto.name !== undefined) updates.name = dto.name;
+    if (dto.description !== undefined) updates.description = dto.description;
+    if (dto.weekDays !== undefined) updates.weekDays = dto.weekDays;
+    if (dto.votingOpenTime !== undefined)
+      updates.votingOpenTime = dto.votingOpenTime;
+    if (dto.votingCloseTime !== undefined)
+      updates.votingCloseTime = dto.votingCloseTime;
     if (dto.active !== undefined) updates.active = dto.active;
-    const [linha] = await this.db
-      .update(schema.linhas)
+    const [route] = await this.db
+      .update(schema.routes)
       .set(updates)
       .where(
         and(
-          eq(schema.linhas.id, id),
-          eq(schema.linhas.idPrefeitura, idPrefeitura),
+          eq(schema.routes.id, id),
+          eq(schema.routes.municipalityId, municipalityId),
         ),
       )
       .returning();
-    if (!linha) throw new NotFoundException('Route not found');
-    return linha;
+    if (!route) throw new NotFoundException('Route not found');
+    return route;
   }
 
-  async createOnibus(
-    idPrefeitura: string,
+  async createBus(
+    municipalityId: string,
     dto: {
-      numeroIdentificacao: string;
-      placa: string;
-      capacidadePadrao: number;
-      temBanheiro?: boolean;
-      temArCondicionado?: boolean;
+      identificationNumber: string;
+      plate: string;
+      standardCapacity: number;
+      hasBathroom?: boolean;
+      hasAirConditioning?: boolean;
     },
-    idMotorista?: string,
+    driverId?: string,
   ) {
-    const [onibus] = await this.db
-      .insert(schema.onibus)
+    const [bus] = await this.db
+      .insert(schema.buses)
       .values({
-        idPrefeitura,
-        idMotorista: idMotorista ?? null,
-        numeroIdentificacao: dto.numeroIdentificacao,
-        placa: dto.placa,
-        capacidadePadrao: dto.capacidadePadrao,
-        temBanheiro: dto.temBanheiro ?? false,
-        temArCondicionado: dto.temArCondicionado ?? false,
+        municipalityId,
+        driverId: driverId ?? null,
+        identificationNumber: dto.identificationNumber,
+        plate: dto.plate,
+        standardCapacity: dto.standardCapacity,
+        hasBathroom: dto.hasBathroom ?? false,
+        hasAirConditioning: dto.hasAirConditioning ?? false,
       })
       .returning();
-    return onibus;
+    return bus;
   }
 
-  async listOnibusByMotorista(idPrefeitura: string, idMotorista: string) {
+  async listBusesByDriver(municipalityId: string, driverId: string) {
     return this.db
       .select()
-      .from(schema.onibus)
+      .from(schema.buses)
       .where(
         and(
-          eq(schema.onibus.idPrefeitura, idPrefeitura),
-          eq(schema.onibus.idMotorista, idMotorista),
+          eq(schema.buses.municipalityId, municipalityId),
+          eq(schema.buses.driverId, driverId),
         ),
       );
   }
 
-  async updateOnibus(
-    idPrefeitura: string,
+  async updateBus(
+    municipalityId: string,
     id: string,
     dto: {
-      numeroIdentificacao?: string;
-      placa?: string;
-      capacidadePadrao?: number;
-      temBanheiro?: boolean;
-      temArCondicionado?: boolean;
+      identificationNumber?: string;
+      plate?: string;
+      standardCapacity?: number;
+      hasBathroom?: boolean;
+      hasAirConditioning?: boolean;
       active?: boolean;
     },
   ) {
-    const updates: Partial<typeof schema.onibus.$inferInsert> = {};
-    if (dto.numeroIdentificacao !== undefined)
-      updates.numeroIdentificacao = dto.numeroIdentificacao;
-    if (dto.placa !== undefined) updates.placa = dto.placa;
-    if (dto.capacidadePadrao !== undefined)
-      updates.capacidadePadrao = dto.capacidadePadrao;
-    if (dto.temBanheiro !== undefined) updates.temBanheiro = dto.temBanheiro;
-    if (dto.temArCondicionado !== undefined)
-      updates.temArCondicionado = dto.temArCondicionado;
+    const updates: Partial<typeof schema.buses.$inferInsert> = {};
+    if (dto.identificationNumber !== undefined)
+      updates.identificationNumber = dto.identificationNumber;
+    if (dto.plate !== undefined) updates.plate = dto.plate;
+    if (dto.standardCapacity !== undefined)
+      updates.standardCapacity = dto.standardCapacity;
+    if (dto.hasBathroom !== undefined) updates.hasBathroom = dto.hasBathroom;
+    if (dto.hasAirConditioning !== undefined)
+      updates.hasAirConditioning = dto.hasAirConditioning;
     if (dto.active !== undefined) updates.active = dto.active;
-    const [onibus] = await this.db
-      .update(schema.onibus)
+    const [bus] = await this.db
+      .update(schema.buses)
       .set(updates)
       .where(
         and(
-          eq(schema.onibus.id, id),
-          eq(schema.onibus.idPrefeitura, idPrefeitura),
+          eq(schema.buses.id, id),
+          eq(schema.buses.municipalityId, municipalityId),
         ),
       )
       .returning();
-    if (!onibus) throw new NotFoundException('Bus not found');
-    return onibus;
+    if (!bus) throw new NotFoundException('Bus not found');
+    return bus;
   }
 }

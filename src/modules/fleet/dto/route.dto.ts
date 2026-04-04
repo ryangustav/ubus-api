@@ -1,7 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsInt, Min, Max, IsBoolean, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsInt, Min, Max, IsBoolean, Matches, IsUUID } from 'class-validator';
 
 export class CreateRouteDto {
+  @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
+  @IsUUID()
+  @IsOptional()
+  municipalityId?: string;
+
   @ApiProperty({ example: 'UFS - Centro' })
   @IsString()
   @IsNotEmpty()
@@ -44,6 +49,11 @@ export class CreateRouteDto {
 }
 
 export class UpdateRouteDto {
+  @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
+  @IsUUID()
+  @IsOptional()
+  municipalityId?: string;
+
   @ApiPropertyOptional({ example: 'UFS - Centro' })
   @IsString()
   @IsOptional()

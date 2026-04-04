@@ -52,7 +52,7 @@ export class UsersController {
     @Body() dto: UpdateStatusDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.users.updateStatus(id, dto.status, user.municipalityId);
+    return this.users.updateStatus(id, dto.status, user.municipalityId, user.role);
   }
 
   @Patch('me/point')

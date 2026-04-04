@@ -42,6 +42,7 @@ export class UsersService {
     id: string,
     status: 'APPROVED' | 'REJECTED',
     municipalityId: string,
+    role?: string,
   ) {
     const [user] = await this.db
       .select()
@@ -49,7 +50,7 @@ export class UsersService {
       .where(eq(schema.users.id, id));
 
     if (!user) throw new NotFoundException('User not found');
-    if (user.municipalityId !== municipalityId) {
+    if (user.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('User belongs to another municipality');
     }
     if (user.registrationStatus !== 'PENDING') {

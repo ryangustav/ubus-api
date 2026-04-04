@@ -95,6 +95,10 @@ export class AuthService {
     }
 
     const hash = await bcrypt.hash(parsed.data.password, 10);
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
+
     const [user] = await this.db
       .insert(schema.users)
       .values({
@@ -111,6 +115,7 @@ export class AuthService {
         scheduleUrl: parsed.data.gradeFileUrl ?? null,
         residenceProofUrl: parsed.data.residenciaFileUrl ?? null,
         needsWheelchair: parsed.data.needsWheelchair ?? false,
+        emailVerificationCode: verificationCode,
       })
       .returning();
 
@@ -121,6 +126,12 @@ export class AuthService {
         .where(eq(schema.municipalities.id, municipalityId));
     }
 
+    await this.emailService.sendVerificationCode(
+      user.email,
+      user.name,
+      verificationCode,
+    );
+
     return this.login({
       email: user.email,
       password: parsed.data.password,
@@ -130,8 +141,11 @@ export class AuthService {
   async login(dto: LoginDto) {
     const parsed = loginSchema.safeParse(dto);
     if (!parsed.success) {
+      console.log('[AuthService] Login DTO failed validation:', parsed.error);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    const { email, password } = parsed.data;
 
     const [data] = await this.db
       .select({
@@ -143,21 +157,24 @@ export class AuthService {
         schema.municipalities,
         eq(schema.users.municipalityId, schema.municipalities.id),
       )
-      .where(eq(schema.users.email, parsed.data.email));
+      .where(eq(schema.users.email, email));
 
     if (!data?.user) {
+      console.log('[AuthService] User not found for email:', email);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const u = data.user;
     if (data.municipality?.active === false) {
+      console.log('[AuthService] Municipality inactive for user:', u.id);
       throw new UnauthorizedException(
         'Municipality paused. Contact administrator.',
       );
     }
 
-    const valid = await bcrypt.compare(parsed.data.password, u.passwordHash);
+    const valid = await bcrypt.compare(password, u.passwordHash);
     if (!valid) {
+      console.log('[AuthService] Password mismatch for user:', u.id);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -212,12 +229,30 @@ export class AuthService {
     return { message: 'Password reset email sent' };
   }
 
-  getPasswordResetEmailPreview(): string {
+  async getPasswordResetEmailPreview(userEmail: string): Promise<string> {
     const frontendUrl =
       this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
     const token = 'x'.repeat(64);
     const resetUrl = `${frontendUrl}/user/reset-password?token=${token}`;
-    return this.emailService.getPasswordResetEmailHtml(resetUrl);
+    const html = this.emailService.getPasswordResetEmailHtml(resetUrl);
+
+    // Send to SMTP if configured (for development preview in Mailpit)
+    await this.emailService.sendPasswordResetEmail(userEmail, resetUrl);
+
+    return html;
+  }
+
+  async getVerificationEmailPreview(
+    userEmail: string,
+    userName: string,
+  ): Promise<string> {
+    const code = '123456';
+    const html = this.emailService.getVerificationEmailHtml(userName, code);
+
+    // Send to SMTP if configured
+    await this.emailService.sendVerificationCode(userEmail, userName, code);
+
+    return html;
   }
 
   async resetPassword(dto: unknown): Promise<{ message: string }> {

@@ -1,12 +1,12 @@
 /**
- * Seed dos super-admins: ubus_infra e ubus_admin
- * Gera senhas de 16 caracteres e insere no banco.
- * Execute: npm run db:seed-super-admins
+ * Super-Admin Seed: ubus_infra and ubus_admin
+ * Generates 16-character random passwords and inserts them into the database.
+ * Run: npm run db:seed-super-admins
  */
 import * as path from 'path';
 import * as fs from 'fs';
 
-// Carrega .env da raiz do projeto
+// Load .env from project root
 const envPath = path.join(process.cwd(), '.env');
 if (fs.existsSync(envPath)) {
   const env = fs.readFileSync(envPath, 'utf-8');
@@ -25,81 +25,91 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import * as schema from '../src/shared/database/schema';
 
-const SISTEMA_PREFEITURA_ID = '00000000-0000-0000-0000-000000000001';
+const SYSTEM_MUNICIPALITY_ID = '00000000-0000-0000-0000-000000000001';
 
-function gerarSenha16(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@!#$%¨&*(*)_+';
-  return Array.from(crypto.randomBytes(16), (b) => chars[b % chars.length]).join('');
+function generatePassword16(): string {
+  const chars =
+    'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@!#$%¨&*(*)_+';
+  return Array.from(crypto.randomBytes(16), (b) => chars[b % chars.length]).join(
+    '',
+  );
 }
 
 import { loadOciSecrets } from '../src/config/oci-vault';
 
 async function main() {
   await loadOciSecrets();
-  const url = process.env.DATABASE_URL ?? 'postgresql://postgres:123456@localhost:5432/ubus';
+  const url =
+    process.env.DATABASE_URL ??
+    'postgresql://postgres:123456@localhost:5432/ubus';
   const pool = new Pool({ connectionString: url });
   const db = drizzle(pool, { schema });
 
-  const senhaInfra = gerarSenha16();
-  const senhaAdmin = gerarSenha16();
+  const infraPassword = generatePassword16();
+  const adminPassword = generatePassword16();
 
   await db
-    .insert(schema.prefeituras)
+    .insert(schema.municipalities)
     .values({
-      id: SISTEMA_PREFEITURA_ID,
-      nome: 'Sistema UBUS',
-      ativo: true,
+      id: SYSTEM_MUNICIPALITY_ID,
+      name: 'System UBUS',
+      active: true,
     })
-    .onConflictDoNothing({ target: schema.prefeituras.id });
+    .onConflictDoNothing({ target: schema.municipalities.id });
 
-  const hashInfra = await bcrypt.hash(senhaInfra, 10);
-  const hashAdmin = await bcrypt.hash(senhaAdmin, 10);
+  const infraHash = await bcrypt.hash(infraPassword, 10);
+  const adminHash = await bcrypt.hash(adminPassword, 10);
 
   await db
-    .insert(schema.usuarios)
+    .insert(schema.users)
     .values([
       {
-        idPrefeitura: SISTEMA_PREFEITURA_ID,
+        municipalityId: SYSTEM_MUNICIPALITY_ID,
         cpf: '00000000001',
-        nome: 'UBUS Infra',
+        name: 'UBUS Infra',
         email: 'ubus_infra@ubus.local',
-        senhaHash: hashInfra,
+        passwordHash: infraHash,
         role: 'SUPER_ADMIN',
       },
       {
-        idPrefeitura: SISTEMA_PREFEITURA_ID,
+        municipalityId: SYSTEM_MUNICIPALITY_ID,
         cpf: '00000000002',
-        nome: 'UBUS Admin',
+        name: 'UBUS Admin',
         email: 'ubus_admin@ubus.local',
-        senhaHash: hashAdmin,
+        passwordHash: adminHash,
         role: 'SUPER_ADMIN',
       },
     ])
     .onConflictDoNothing({
-      target: [schema.usuarios.idPrefeitura, schema.usuarios.email],
+      target: [schema.users.municipalityId, schema.users.email],
     });
 
-  const credenciais = `
-# Super-Admins UBUS - Credenciais geradas em ${new Date().toISOString()}
-# GUARDE ESTE ARQUIVO EM LOCAL SEGURO E APAGUE APÓS ANOTAR AS SENHAS
+  const credentials = `
+# UBUS Super-Admins - Credentials generated on ${new Date().toISOString()}
+# KEEP THIS FILE IN A SAFE PLACE AND DELETE IT AFTER NOTING THE PASSWORDS
 
 ubus_infra
   Email: ubus_infra@ubus.local
-  Senha: ${senhaInfra}
+  Password: ${infraPassword}
 
 ubus_admin
   Email: ubus_admin@ubus.local
-  Senha: ${senhaAdmin}
-
+  Password: ${adminPassword}
 `.trim();
 
-  const outputPath = path.join(process.cwd(), 'scripts', 'super-admin-credentials.txt');
-  fs.writeFileSync(outputPath, credenciais, 'utf-8');
-  console.log('Super-admins criados com sucesso!');
-  console.log('Credenciais salvas em:', outputPath);
-  console.log('\n--- Credenciais ---');
-  console.log(credenciais);
-  console.log('\n⚠️  Apague o arquivo super-admin-credentials.txt após anotar as senhas!');
+  const outputPath = path.join(
+    process.cwd(),
+    'scripts',
+    'super-admin-credentials.txt',
+  );
+  fs.writeFileSync(outputPath, credentials, 'utf-8');
+  console.log('Super-admins created successfully!');
+  console.log('Credentials saved to:', outputPath);
+  console.log('\n--- Credentials ---');
+  console.log(credentials);
+  console.log(
+    '\n⚠️  Delete the file super-admin-credentials.txt after noting the passwords!',
+  );
 
   await pool.end();
 }

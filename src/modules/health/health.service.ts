@@ -19,6 +19,10 @@ export interface HealthResult {
     totalDbMs: number;
     totalMs: number;
   };
+  redisConfig?: {
+    maxmemoryPolicy: string;
+    warning?: string;
+  };
 }
 
 @Injectable()
@@ -53,6 +57,18 @@ export class HealthService {
         ok: true,
         latencyMs: Math.round(performance.now() - redisStart),
       };
+      
+      // Check eviction policy
+      const config = (await this.redis.config('GET', 'maxmemory-policy')) as string[];
+      if (config && config.length >= 2) {
+        const policy = config[1];
+        result.redisConfig = { maxmemoryPolicy: policy };
+        if (policy !== 'noeviction') {
+          const warnMsg = `IMPORTANT! Eviction policy is ${policy}. It should be "noeviction" for BullMQ stability.`;
+          console.warn(warnMsg);
+          result.redisConfig.warning = warnMsg;
+        }
+      }
     } catch (e) {
       result.ok = false;
       result.redis = {

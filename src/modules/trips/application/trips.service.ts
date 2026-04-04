@@ -22,26 +22,30 @@ export class TripsService {
     @InjectRedis() private redis: Redis,
   ) {}
 
-  async createTrip(dto: {
-    tripId: string;
-    tripDate: string;
-    shift: string;
-    direction: 'OUTBOUND' | 'INBOUND';
-    routeId: string;
-    busId: string;
-    driverId?: string;
-    realCapacity: number;
-    votingOpen: string;
-    votingClose: string;
-    leaderIds?: string[];
-  }) {
+  async createTrip(
+    dto: {
+      tripId: string;
+      tripDate: string;
+      shift: string;
+      direction: 'OUTBOUND' | 'INBOUND' | string;
+      routeId: string;
+      busId: string;
+      driverId?: string;
+      realCapacity: number;
+      votingOpen: string;
+      votingClose: string;
+      leaderIds?: string[];
+    },
+    municipalityId: string,
+    role?: string,
+  ) {
     const [trip] = await this.db
       .insert(schema.trips)
       .values({
         id: dto.tripId,
         tripDate: dto.tripDate,
         shift: dto.shift,
-        direction: dto.direction,
+        direction: dto.direction as 'OUTBOUND' | 'INBOUND',
         routeId: dto.routeId,
         busId: dto.busId,
         driverId: dto.driverId ?? null,
@@ -93,7 +97,7 @@ export class TripsService {
     dto: Partial<{
       tripDate: string;
       shift: string;
-      direction: 'OUTBOUND' | 'INBOUND';
+      direction: 'OUTBOUND' | 'INBOUND' | string;
       routeId: string;
       busId: string;
       driverId: string | null;
@@ -103,6 +107,8 @@ export class TripsService {
       leaderIds: string[];
       status: string;
     }>,
+    municipalityId: string,
+    role?: string,
   ) {
     const updates: Record<string, unknown> = {};
     if (dto.tripDate !== undefined) updates.tripDate = dto.tripDate;
@@ -133,6 +139,7 @@ export class TripsService {
     tripId: string,
     userId: string,
     municipalityId: string,
+    role?: string,
   ) {
     const [trip] = await this.db
       .select()
@@ -154,10 +161,10 @@ export class TripsService {
       .select()
       .from(schema.routes)
       .where(eq(schema.routes.id, trip.routeId));
-    if (route?.municipalityId !== municipalityId) {
+    if (route?.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
-    if (!isLeader && !isDriver) {
+    if (!isLeader && !isDriver && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Only leader or driver can trigger alert');
     }
 
@@ -171,6 +178,7 @@ export class TripsService {
     tripId: string,
     userId: string,
     municipalityId: string,
+    role?: string,
   ) {
     const [trip] = await this.db
       .select()
@@ -184,10 +192,10 @@ export class TripsService {
       .select()
       .from(schema.routes)
       .where(eq(schema.routes.id, trip.routeId));
-    if (route?.municipalityId !== municipalityId) {
+    if (route?.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
-    if (!isLeader) {
+    if (!isLeader && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Only leader can confirm absences');
     }
 
@@ -234,6 +242,7 @@ export class TripsService {
     destinationTripId: string,
     userId: string,
     municipalityId: string,
+    role?: string,
   ) {
     const [originTrip] = await this.db
       .select()
@@ -254,10 +263,10 @@ export class TripsService {
       .select()
       .from(schema.routes)
       .where(eq(schema.routes.id, originTrip.routeId));
-    if (route?.municipalityId !== municipalityId) {
+    if (route?.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
-    if (!isLeader) {
+    if (!isLeader && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Only leader can relocate');
     }
 
@@ -307,6 +316,7 @@ export class TripsService {
     lng: number,
     userId: string,
     municipalityId: string,
+    role?: string,
   ) {
     const [trip] = await this.db
       .select()
@@ -321,10 +331,10 @@ export class TripsService {
       .select()
       .from(schema.routes)
       .where(eq(schema.routes.id, trip.routeId));
-    if (route?.municipalityId !== municipalityId) {
+    if (route?.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Trip belongs to another municipality');
     }
-    if (!isDriver && !isLeader) {
+    if (!isDriver && !isLeader && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Only driver or leader can update location');
     }
 

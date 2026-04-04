@@ -38,6 +38,8 @@ export const users = pgTable(
     seatBlockUntil: timestamp('seat_block_until', {
       withTimezone: true,
     }),
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    emailVerificationCode: varchar('email_verification_code', { length: 6 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [

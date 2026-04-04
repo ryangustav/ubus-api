@@ -1,7 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsDateString, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsDateString, IsArray, IsUUID } from 'class-validator';
 
 export class CreateTripDto {
+  @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
+  @IsUUID()
+  @IsOptional()
+  municipalityId?: string;
+
   @ApiProperty({
     example: '20260228-20120-M',
     description: 'Smart Key: YYYYMMDD-BUS-SHIFT',
@@ -27,17 +32,17 @@ export class CreateTripDto {
   @IsEnum(['OUTBOUND', 'INBOUND'])
   direction: 'OUTBOUND' | 'INBOUND';
 
-  @ApiProperty({ example: 'uuid-da-linha' })
+  @ApiProperty({ example: 'uuid-of-route' })
   @IsString()
   @IsNotEmpty()
   routeId: string;
 
-  @ApiProperty({ example: 'uuid-do-onibus' })
+  @ApiProperty({ example: 'uuid-of-bus' })
   @IsString()
   @IsNotEmpty()
   busId: string;
 
-  @ApiPropertyOptional({ example: 'uuid-do-motorista' })
+  @ApiPropertyOptional({ example: 'uuid-of-driver' })
   @IsString()
   @IsOptional()
   driverId?: string;

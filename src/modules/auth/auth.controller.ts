@@ -16,9 +16,9 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './application/auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { PasswordRedefinitionDto } from './dto/password-reset.dto';
+import { RegisterDto } from './application/dto/register.dto';
+import { LoginDto } from './application/dto/login.dto';
+import { PasswordRedefinitionDto } from './application/dto/password-reset.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { JwtPayload } from './infrastructure/strategies/jwt.strategy';
@@ -73,11 +73,38 @@ export class AuthController {
   @ApiOperation({
     summary: '[Dev] Preview password reset email',
     description:
-      'Returns the HTML of the password reset email. Open in browser to see style.',
+      'Sends the email to Mailpit and returns the HTML. Open in browser to see style.',
   })
   @ApiResponse({ status: 200, description: 'HTML content' })
-  passwordEmailPreview(@Res({ passthrough: false }) res: Response) {
-    res.send(this.auth.getPasswordResetEmailPreview());
+  async passwordEmailPreview(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const html = await this.auth.getPasswordResetEmailPreview(user.email);
+    res.send(html);
+  }
+
+  @Get('verification-email-preview')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Header('Content-Type', 'text/html')
+  @ApiOperation({
+    summary: '[Dev] Preview registration verification email',
+    description:
+      'Sends the email to Mailpit and returns the HTML. Open in browser to see style.',
+  })
+  @ApiResponse({ status: 200, description: 'HTML content' })
+  async verificationEmailPreview(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    // We don't have the user's name in the JWT payload by default,
+    // so we'll use a placeholder or the email for the preview.
+    const html = await this.auth.getVerificationEmailPreview(
+      user.email,
+      user.email.split('@')[0],
+    );
+    res.send(html);
   }
 
   @Post('password-redefinition')

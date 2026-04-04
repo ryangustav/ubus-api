@@ -56,7 +56,11 @@ export class FleetController {
   @ApiOperation({ summary: 'Create route (manager only)' })
   @ApiBody({ type: CreateRouteDto })
   createRoute(@CurrentUser() user: JwtPayload, @Body() dto: CreateRouteDto) {
-    return this.fleet.createRoute(user.municipalityId, dto);
+    const municipalityId =
+      user.role === 'SUPER_ADMIN' && dto.municipalityId
+        ? dto.municipalityId
+        : user.municipalityId;
+    return this.fleet.createRoute(municipalityId, dto);
   }
 
   @Patch('routes/:id')
@@ -70,7 +74,11 @@ export class FleetController {
     @Param('id') id: string,
     @Body() dto: UpdateRouteDto,
   ) {
-    return this.fleet.updateRoute(user.municipalityId, id, dto);
+    const municipalityId =
+      user.role === 'SUPER_ADMIN' && dto.municipalityId
+        ? dto.municipalityId
+        : user.municipalityId;
+    return this.fleet.updateRoute(municipalityId, id, dto);
   }
 
   @Get('buses/mine')
@@ -89,8 +97,12 @@ export class FleetController {
   })
   @ApiBody({ type: CreateBusDto })
   createBus(@CurrentUser() user: JwtPayload, @Body() dto: CreateBusDto) {
+    const municipalityId =
+      user.role === 'SUPER_ADMIN' && dto.municipalityId
+        ? dto.municipalityId
+        : user.municipalityId;
     const driverId = user.role === 'DRIVER' ? user.sub : undefined;
-    return this.fleet.createBus(user.municipalityId, dto, driverId);
+    return this.fleet.createBus(municipalityId, dto, driverId);
   }
 
   @Patch('buses/:id')
@@ -105,6 +117,10 @@ export class FleetController {
     @Param('id') id: string,
     @Body() dto: UpdateBusDto,
   ) {
-    return this.fleet.updateBus(user.municipalityId, id, dto);
+    const municipalityId =
+      user.role === 'SUPER_ADMIN' && dto.municipalityId
+        ? dto.municipalityId
+        : user.municipalityId;
+    return this.fleet.updateBus(municipalityId, id, dto);
   }
 }

@@ -41,14 +41,12 @@ export class TripsController {
     return this.trips.getTrip(tripId);
   }
 
-  @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MANAGER')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create trip (manager only)' })
-  @ApiBody({ type: CreateTripDto })
-  createTrip(@Body() dto: CreateTripDto) {
-    return this.trips.createTrip(dto);
+  createTrip(@CurrentUser() user: JwtPayload, @Body() dto: CreateTripDto) {
+    const municipalityId =
+      user.role === 'SUPER_ADMIN' && dto.municipalityId
+        ? dto.municipalityId
+        : user.municipalityId;
+    return this.trips.createTrip(dto, municipalityId, user.role);
   }
 
   @Patch(':tripId')
@@ -58,8 +56,16 @@ export class TripsController {
   @ApiOperation({ summary: 'Update trip (manager only)' })
   @ApiParam({ name: 'tripId' })
   @ApiBody({ type: UpdateTripDto })
-  updateTrip(@Param('tripId') tripId: string, @Body() dto: UpdateTripDto) {
-    return this.trips.updateTrip(tripId, dto);
+  updateTrip(
+    @CurrentUser() user: JwtPayload,
+    @Param('tripId') tripId: string,
+    @Body() dto: UpdateTripDto,
+  ) {
+    const municipalityId =
+      user.role === 'SUPER_ADMIN' && dto.municipalityId
+        ? dto.municipalityId
+        : user.municipalityId;
+    return this.trips.updateTrip(tripId, dto, municipalityId, user.role);
   }
 
   @Post(':tripId/confirmation-alert')
@@ -75,6 +81,7 @@ export class TripsController {
       tripId,
       user.sub,
       user.municipalityId,
+      user.role,
     );
   }
 
@@ -87,7 +94,12 @@ export class TripsController {
     @Param('tripId') tripId: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.trips.finishAndPunish(tripId, user.sub, user.municipalityId);
+    return this.trips.finishAndPunish(
+      tripId,
+      user.sub,
+      user.municipalityId,
+      user.role,
+    );
   }
 
   @Post(':tripId/relocation')
@@ -112,6 +124,7 @@ export class TripsController {
       body.destinationTripId,
       user.sub,
       user.municipalityId,
+      user.role,
     );
   }
 
@@ -156,6 +169,7 @@ export class TripsController {
       body.lng,
       user.sub,
       user.municipalityId,
+      user.role,
     );
   }
 }

@@ -365,7 +365,7 @@ export class UsersService {
   // ── Accessibility ────────────────────────────────────
   async requestAccessibility(
     userId: string,
-    dto: { reason: string; proofDocUrl: string },
+    dto: { reason: string; proofDocUrl: string; needsWheelchair?: boolean },
   ) {
     const [user] = await this.db
       .select()
@@ -379,19 +379,31 @@ export class UsersService {
       );
     }
 
+    const updateSet: Partial<typeof schema.users.$inferInsert> = {
+      accessibilityReason: dto.reason as any,
+      accessibilityDocUrl: dto.proofDocUrl,
+      accessibilityStatus: 'PENDING_REVIEW',
+    };
+    if (dto.needsWheelchair !== undefined) {
+      updateSet.needsWheelchair = dto.needsWheelchair;
+    }
+
     const [updated] = await this.db
       .update(schema.users)
-      .set({
-        accessibilityReason: dto.reason as any,
-        accessibilityDocUrl: dto.proofDocUrl,
-        accessibilityStatus: 'PENDING_REVIEW',
-      })
+      .set(updateSet)
       .where(eq(schema.users.id, userId))
       .returning({
         id: schema.users.id,
         accessibilityReason: schema.users.accessibilityReason,
         accessibilityStatus: schema.users.accessibilityStatus,
       });
+
+    if (dto.needsWheelchair && user.defaultRouteId) {
+      await this.db
+        .update(schema.routes)
+        .set({ requiresElevator: true })
+        .where(eq(schema.routes.id, user.defaultRouteId));
+    }
 
     return updated;
   }
@@ -412,7 +424,7 @@ export class UsersService {
 
   async reviewAccessibility(
     id: string,
-    dto: { status: 'APPROVED' | 'REJECTED'; note?: string },
+    dto: { status: 'APPROVED' | 'REJECTED' | 'REVOKED'; note?: string },
     municipalityId: string,
   ) {
     const [user] = await this.db
@@ -424,7 +436,10 @@ export class UsersService {
     if (user.municipalityId !== municipalityId) {
       throw new ForbiddenException('User belongs to another municipality');
     }
-    if (user.accessibilityStatus !== 'PENDING_REVIEW') {
+    if (
+      dto.status !== 'REVOKED' &&
+      user.accessibilityStatus !== 'PENDING_REVIEW'
+    ) {
       throw new ForbiddenException(
         'Accessibility review not pending for this user',
       );
@@ -439,6 +454,8 @@ export class UsersService {
       updateSet.accessibilityApprovedAt = new Date();
       updateSet.accessibilityConsecutivePeriods =
         (user.accessibilityConsecutivePeriods ?? 0) + 1;
+    } else if (dto.status === 'REVOKED' || dto.status === 'REJECTED') {
+      updateSet.accessibilityApprovedAt = null;
     }
 
     const [updated] = await this.db
@@ -456,6 +473,24 @@ export class UsersService {
   }
 
   // ── Soft Delete ──────────────────────────────────────
+  async selfSoftDelete(userId: string) {
+    const [updated] = await this.db
+      .update(schema.users)
+      .set({
+        deletedAt: new Date(),
+        registrationStatus: 'INACTIVE',
+      })
+      .where(eq(schema.users.id, userId))
+      .returning({
+        id: schema.users.id,
+        deletedAt: schema.users.deletedAt,
+        registrationStatus: schema.users.registrationStatus,
+      });
+
+    if (!updated) throw new NotFoundException('User not found');
+    return updated;
+  }
+
   async softDelete(id: string, municipalityId: string, role: string) {
     const [user] = await this.db
       .select()

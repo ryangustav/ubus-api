@@ -9,7 +9,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsBoolean,
+} from 'class-validator';
 import {
   ApiTags,
   ApiOperation,
@@ -19,8 +25,10 @@ import {
   ApiBearerAuth,
   ApiProperty,
   ApiPropertyOptional,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { UsersService } from './application/users.service';
+import { UserDto } from './application/dto/user.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/guards/roles.decorator';
@@ -86,13 +94,18 @@ class RequestAccessibilityDto {
   @IsString()
   @IsNotEmpty()
   proofDocUrl!: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  needsWheelchair?: boolean;
 }
 
 class ReviewAccessibilityDto {
-  @ApiProperty({ enum: ['APPROVED', 'REJECTED'] })
-  @IsEnum(['APPROVED', 'REJECTED'])
+  @ApiProperty({ enum: ['APPROVED', 'REJECTED', 'REVOKED'] })
+  @IsEnum(['APPROVED', 'REJECTED', 'REVOKED'])
   @IsNotEmpty()
-  status!: 'APPROVED' | 'REJECTED';
+  status!: 'APPROVED' | 'REJECTED' | 'REVOKED';
 
   @ApiPropertyOptional({ description: 'Review note' })
   @IsString()
@@ -114,6 +127,9 @@ export class UsersController {
   @ApiOperation({ summary: 'List users with optional filters' })
   @ApiQuery({ name: 'role', required: false })
   @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'municipalityId', required: false })
+  @ApiQuery({ name: 'accessibilityStatus', required: false })
+  @ApiResponse({ status: 200, type: [UserDto] })
   listUsers(
     @CurrentUser() user: JwtPayload,
     @Query('role') role?: string,
@@ -141,6 +157,7 @@ export class UsersController {
   @Roles('MANAGER', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Get user details by ID' })
   @ApiParam({ name: 'id' })
+  @ApiResponse({ status: 200, type: UserDto })
   findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.users.findOne(id, user.municipalityId, user.role);
   }
@@ -148,6 +165,7 @@ export class UsersController {
   // ── Profile ──────────────────────────────────────────
   @Get('me')
   @ApiOperation({ summary: 'Get my profile' })
+  @ApiResponse({ status: 200, type: UserDto })
   getMe(@CurrentUser() user: JwtPayload) {
     return this.users.getMe(user.sub);
   }
@@ -296,6 +314,13 @@ export class UsersController {
   }
 
   // ── Soft Delete ──────────────────────────────────────
+  @Delete('me')
+  @ApiOperation({ summary: 'Self soft delete user account' })
+  @ApiResponse({ status: 200, description: 'User account soft deleted' })
+  deleteMe(@CurrentUser() user: JwtPayload) {
+    return this.users.selfSoftDelete(user.sub);
+  }
+
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles('MANAGER', 'SUPER_ADMIN')

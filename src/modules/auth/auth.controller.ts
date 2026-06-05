@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { AuthService } from './application/auth.service';
 import { RegisterDto } from './application/dto/register.dto';
-import { LoginDto } from './application/dto/login.dto';
+import { LoginDto, LoginResponseDto } from './application/dto/login.dto';
 import {
   PasswordRedefinitionDto,
   SendPasswordResetEmailDto,
@@ -48,7 +48,8 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiResponse({
     status: 200,
-    description: 'Returns only the accessToken',
+    description: 'Returns accessToken and User object',
+    type: LoginResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   login(@Body() dto: LoginDto) {

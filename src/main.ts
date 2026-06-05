@@ -14,11 +14,11 @@ async function bootstrap() {
   app.setGlobalPrefix('v1');
 
   app.use(helmet());
-  const origins = ['https://ubus.me'];
+  const origins: (string | RegExp)[] = [/^https?:\/\/(?:.*\.)?ubus\.me$/];
   if (process.env.FRONTEND_URL) origins.push(process.env.FRONTEND_URL);
 
   app.enableCors({
-    origin: origins.length > 1 ? origins : origins[0] || '*',
+    origin: origins,
     credentials: true,
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

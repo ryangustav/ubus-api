@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MinLength, Length } from 'class-validator';
+import {
+  IsString,
+  MinLength,
+  Length,
+  IsEmail,
+  IsNotEmpty,
+} from 'class-validator';
 
 export const passwordRedefinitionSchema = z.object({
   token: z.string().length(64, 'Token must be 64 characters'),
@@ -17,4 +23,11 @@ export class PasswordRedefinitionDto {
   @IsString()
   @MinLength(6)
   password: string;
+}
+
+export class SendPasswordResetEmailDto {
+  @ApiProperty({ example: 'user@example.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }

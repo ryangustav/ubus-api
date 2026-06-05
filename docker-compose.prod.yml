@@ -15,6 +15,7 @@ services:
       IMAGE: ${IMAGE}
       USE_OCI_VAULT: ${USE_OCI_VAULT:-true}
       OCI_SECRET_OCID: ${OCI_SECRET_OCID}
+      TZ: America/Sao_Paulo
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/v1/health"]
       interval: 10s

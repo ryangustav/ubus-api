@@ -45,6 +45,7 @@ services:
       PORT: 3001
       USE_OCI_VAULT: ${USE_OCI_VAULT:-false}
       OCI_SECRET_OCID: ${OCI_SECRET_OCID}
+      TZ: America/Sao_Paulo
     depends_on:
       mongodb:
         condition: service_healthy

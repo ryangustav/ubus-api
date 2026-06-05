@@ -12,18 +12,22 @@ export class CronService {
   constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
 
   /**
-   * Runs daily at 02:00 — marks users whose semester has expired.
-   * Sets registrationStatus = INACTIVE and clears accessibility if expired.
+   * Carteirinha Expiry - Runs daily at midnight.
+   * Sets users with expiresAt < now() AND status is APPROVED to RENEWAL_PENDING,
+   * and sets their renewalDeadline to now() + 14 days.
    */
-  @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: 'expire-semesters' })
-  async handleExpiredSemesters() {
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { name: 'expire-carteirinhas' })
+  async handleExpiredCarteirinhas() {
     const now = new Date();
-    this.logger.log(`[expire-semesters] Running at ${now.toISOString()}`);
+    this.logger.log(`[expire-carteirinhas] Running at ${now.toISOString()}`);
 
-    // 1) Mark users whose expiresAt < now AND status is APPROVED → INACTIVE
+    const renewalDeadline = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
     const expired = await this.db
       .update(schema.users)
-      .set({ registrationStatus: 'INACTIVE' })
+      .set({
+        registrationStatus: 'RENEWAL_PENDING',
+        renewalDeadline,
+      })
       .where(
         and(
           eq(schema.users.registrationStatus, 'APPROVED'),
@@ -35,56 +39,96 @@ export class CronService {
       .returning({ id: schema.users.id });
 
     this.logger.log(
-      `[expire-semesters] Marked ${expired.length} users as INACTIVE`,
-    );
-
-    // 2) Expire accessibility approvals that are older than the semester deadline
-    const expiredAccessibility = await this.db
-      .update(schema.users)
-      .set({ accessibilityStatus: 'EXPIRED' })
-      .where(
-        and(
-          eq(schema.users.accessibilityStatus, 'APPROVED'),
-          isNotNull(schema.users.expiresAt),
-          lt(schema.users.expiresAt, now),
-          isNull(schema.users.deletedAt),
-        ),
-      )
-      .returning({ id: schema.users.id });
-
-    this.logger.log(
-      `[expire-semesters] Expired ${expiredAccessibility.length} accessibility approvals`,
+      `[expire-carteirinhas] Set ${expired.length} expired users to RENEWAL_PENDING`,
     );
   }
 
   /**
-   * Runs daily at 06:00 — sends renewal reminders 30 days before expiry.
-   * This is a stub; actual notification sending depends on the notifications module.
+   * Suspension - Runs daily at midnight.
+   * Suspends users (status = 'SUSPENDED') if they are in RENEWAL_PENDING,
+   * have not submitted a renewal, and renewalDeadline < now().
    */
-  @Cron(CronExpression.EVERY_DAY_AT_6AM, { name: 'renewal-reminders' })
-  async handleRenewalReminders() {
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { name: 'suspend-users' })
+  async handleSuspendedUsers() {
     const now = new Date();
-    const thirtyDaysFromNow = new Date(
-      now.getTime() + 30 * 24 * 60 * 60 * 1000,
-    );
-    this.logger.log(`[renewal-reminders] Running at ${now.toISOString()}`);
+    this.logger.log(`[suspend-users] Running at ${now.toISOString()}`);
 
-    const usersNearExpiry = await this.db
-      .select({ id: schema.users.id, email: schema.users.email })
-      .from(schema.users)
+    const suspended = await this.db
+      .update(schema.users)
+      .set({
+        registrationStatus: 'SUSPENDED',
+      })
       .where(
         and(
-          eq(schema.users.registrationStatus, 'APPROVED'),
-          isNotNull(schema.users.expiresAt),
-          lt(schema.users.expiresAt, thirtyDaysFromNow),
+          eq(schema.users.registrationStatus, 'RENEWAL_PENDING'),
+          isNull(schema.users.renewalSubmittedAt),
+          isNotNull(schema.users.renewalDeadline),
+          lt(schema.users.renewalDeadline, now),
           isNull(schema.users.deletedAt),
         ),
-      );
+      )
+      .returning({ id: schema.users.id });
+
+    this.logger.log(`[suspend-users] Suspended ${suspended.length} users`);
+  }
+
+  /**
+   * Inactivation - Runs weekly.
+   * Sets SUSPENDED users for > 180 days (renewalDeadline < 180 days ago)
+   * to INACTIVE and marks them soft-deleted (deletedAt = now).
+   */
+  @Cron(CronExpression.EVERY_WEEK, { name: 'inactivate-users' })
+  async handleInactivateUsers() {
+    const now = new Date();
+    const hundredEightyDaysAgo = new Date(
+      now.getTime() - 180 * 24 * 60 * 60 * 1000,
+    );
+    this.logger.log(`[inactivate-users] Running at ${now.toISOString()}`);
+
+    const inactivated = await this.db
+      .update(schema.users)
+      .set({
+        registrationStatus: 'INACTIVE',
+        deletedAt: now,
+      })
+      .where(
+        and(
+          eq(schema.users.registrationStatus, 'SUSPENDED'),
+          isNotNull(schema.users.renewalDeadline),
+          lt(schema.users.renewalDeadline, hundredEightyDaysAgo),
+          isNull(schema.users.deletedAt),
+        ),
+      )
+      .returning({ id: schema.users.id });
 
     this.logger.log(
-      `[renewal-reminders] Found ${usersNearExpiry.length} users near expiry`,
+      `[inactivate-users] Inactivated ${inactivated.length} users`,
     );
+  }
 
-    // TODO: integrate with NotificationsModule to send push/email notifications
+  /**
+   * Exclusion - Runs weekly.
+   * Hard deletes INACTIVE users for > 180 days (deletedAt < 180 days ago).
+   */
+  @Cron(CronExpression.EVERY_WEEK, { name: 'delete-users' })
+  async handleDeleteUsers() {
+    const now = new Date();
+    const hundredEightyDaysAgo = new Date(
+      now.getTime() - 180 * 24 * 60 * 60 * 1000,
+    );
+    this.logger.log(`[delete-users] Running at ${now.toISOString()}`);
+
+    const deleted = await this.db
+      .delete(schema.users)
+      .where(
+        and(
+          eq(schema.users.registrationStatus, 'INACTIVE'),
+          isNotNull(schema.users.deletedAt),
+          lt(schema.users.deletedAt, hundredEightyDaysAgo),
+        ),
+      )
+      .returning({ id: schema.users.id });
+
+    this.logger.log(`[delete-users] Hard deleted ${deleted.length} users`);
   }
 }

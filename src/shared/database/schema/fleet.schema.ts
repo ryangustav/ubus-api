@@ -33,6 +33,8 @@ export const routes = pgTable(
     })
       .notNull()
       .default('07:30'),
+    departureTimeOutbound: varchar('departure_time_outbound', { length: 5 }),
+    departureTimeInbound: varchar('departure_time_inbound', { length: 5 }),
     active: boolean('is_active').default(true),
     requiresElevator: boolean('requires_elevator').default(false).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

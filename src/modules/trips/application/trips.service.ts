@@ -3,6 +3,7 @@ import {
   Inject,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import type Redis from 'ioredis';
@@ -186,71 +187,133 @@ export class TripsService {
       );
     if (!bus) throw new NotFoundException('Bus not found');
 
-    const start = new Date(dto.startDate + 'T00:00:00Z');
-    const end = new Date(dto.endDate + 'T00:00:00Z');
+    let targetDates: string[] = [];
+    if (dto.dates && dto.dates.length > 0) {
+      targetDates = dto.dates;
+    } else if (dto.startDate && dto.endDate) {
+      const start = new Date(dto.startDate + 'T00:00:00Z');
+      const end = new Date(dto.endDate + 'T00:00:00Z');
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dayOfWeek = d.getUTCDay();
+        if (route.weekDays.includes(dayOfWeek)) {
+          const year = d.getUTCFullYear();
+          const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(d.getUTCDate()).padStart(2, '0');
+          targetDates.push(`${year}-${month}-${day}`);
+        }
+      }
+    } else {
+      throw new BadRequestException(
+        'Either startDate and endDate, or dates must be provided',
+      );
+    }
 
     const created: any[] = [];
     const warnings: any[] = [];
 
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dayOfWeek = d.getUTCDay();
-      if (route.weekDays.includes(dayOfWeek)) {
-        const year = d.getUTCFullYear();
-        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(d.getUTCDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-        const smartDate = `${year}${month}${day}`;
+    for (const dateStr of targetDates) {
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) continue;
+      const year = parts[0];
+      const month = parts[1];
+      const day = parts[2];
+      const smartDate = `${year}${month}${day}`;
 
-        const shiftChar = dto.shift.toUpperCase().startsWith('M')
-          ? 'M'
-          : dto.shift.toUpperCase().startsWith('A') ||
-              dto.shift.toUpperCase().startsWith('T')
-            ? 'T'
-            : 'N';
+      const shiftChar = dto.shift.toUpperCase().startsWith('M')
+        ? 'M'
+        : dto.shift.toUpperCase().startsWith('A') ||
+            dto.shift.toUpperCase().startsWith('T')
+          ? 'T'
+          : 'N';
 
-        const tripId = `${smartDate}-${bus.identificationNumber}-${shiftChar}`;
+      const tripId = `${smartDate}-${bus.identificationNumber}-${shiftChar}`;
 
-        const votingOpenAt = new Date(
-          `${dateStr}T${route.votingOpenTime}:00.000Z`,
-        );
-        const votingCloseAt = new Date(
-          `${dateStr}T${route.votingCloseTime}:00.000Z`,
-        );
+      const votingOpenAt = new Date(
+        `${dateStr}T${route.votingOpenTime}:00.000Z`,
+      );
+      const votingCloseAt = new Date(
+        `${dateStr}T${route.votingCloseTime}:00.000Z`,
+      );
 
-        // Check if trip already exists
-        const [existing] = await this.db
-          .select()
-          .from(schema.trips)
-          .where(eq(schema.trips.id, tripId));
+      // Check if trip already exists
+      const [existing] = await this.db
+        .select()
+        .from(schema.trips)
+        .where(eq(schema.trips.id, tripId));
 
-        if (!existing) {
-          const [trip] = await this.db
-            .insert(schema.trips)
-            .values({
-              id: tripId,
-              tripDate: dateStr,
-              shift: dto.shift,
-              direction: dto.direction,
-              routeId: dto.routeId,
-              busId: dto.busId,
-              driverId: dto.driverId ?? null,
-              actualCapacity: dto.realCapacity,
-              votingOpenAt,
-              votingCloseAt,
-              status: 'OPEN_FOR_RESERVATION',
-            })
-            .returning();
+      if (!existing) {
+        const [trip] = await this.db
+          .insert(schema.trips)
+          .values({
+            id: tripId,
+            tripDate: dateStr,
+            shift: dto.shift,
+            direction: dto.direction,
+            routeId: dto.routeId,
+            busId: dto.busId,
+            driverId: dto.driverId ?? null,
+            actualCapacity: dto.realCapacity,
+            votingOpenAt,
+            votingCloseAt,
+            status: 'OPEN_FOR_RESERVATION',
+          })
+          .returning();
 
-          created.push(trip);
+        created.push(trip);
 
-          if (route.requiresElevator && !bus.hasElevator) {
-            warnings.push({ tripId, warning: 'BUS_NO_ELEVATOR' });
-          }
+        if (route.requiresElevator && !bus.hasElevator) {
+          warnings.push({ tripId, warning: 'BUS_NO_ELEVATOR' });
         }
       }
     }
 
     return { scheduledCount: created.length, trips: created, warnings };
+  }
+
+  async assignDriverToTrip(
+    tripId: string,
+    driverId: string | null,
+    municipalityId: string,
+    role: string,
+  ) {
+    const [trip] = await this.db
+      .select()
+      .from(schema.trips)
+      .where(eq(schema.trips.id, tripId));
+
+    if (!trip) throw new NotFoundException('Trip not found');
+
+    const [route] = await this.db
+      .select()
+      .from(schema.routes)
+      .where(eq(schema.routes.id, trip.routeId));
+
+    if (route?.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Trip belongs to another municipality');
+    }
+
+    if (driverId) {
+      const [driver] = await this.db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, driverId));
+
+      if (!driver) throw new NotFoundException('Driver not found');
+      if (driver.role !== 'DRIVER') {
+        throw new ForbiddenException('User is not a driver');
+      }
+      if (driver.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
+        throw new ForbiddenException('Driver belongs to another municipality');
+      }
+    }
+
+    const [updated] = await this.db
+      .update(schema.trips)
+      .set({ driverId: driverId })
+      .where(eq(schema.trips.id, tripId))
+      .returning();
+
+    return updated;
   }
 
   async getRouteCalendar(routeId: string, year?: number, month?: number) {

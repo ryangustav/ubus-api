@@ -34,6 +34,8 @@ export class FleetService {
       weekDays: number[];
       votingOpenTime: string;
       votingCloseTime: string;
+      departureTimeOutbound?: string;
+      departureTimeInbound?: string;
     },
   ) {
     const [route] = await this.db
@@ -45,6 +47,8 @@ export class FleetService {
         weekDays: dto.weekDays,
         votingOpenTime: dto.votingOpenTime,
         votingCloseTime: dto.votingCloseTime,
+        departureTimeOutbound: dto.departureTimeOutbound ?? null,
+        departureTimeInbound: dto.departureTimeInbound ?? null,
       })
       .returning();
     return route;
@@ -61,6 +65,8 @@ export class FleetService {
       votingCloseTime?: string;
       active?: boolean;
       requiresElevator?: boolean;
+      departureTimeOutbound?: string;
+      departureTimeInbound?: string;
     },
   ) {
     const updates: Partial<typeof schema.routes.$inferInsert> = {};
@@ -74,6 +80,10 @@ export class FleetService {
     if (dto.active !== undefined) updates.active = dto.active;
     if (dto.requiresElevator !== undefined)
       updates.requiresElevator = dto.requiresElevator;
+    if (dto.departureTimeOutbound !== undefined)
+      updates.departureTimeOutbound = dto.departureTimeOutbound;
+    if (dto.departureTimeInbound !== undefined)
+      updates.departureTimeInbound = dto.departureTimeInbound;
 
     const [route] = await this.db
       .update(schema.routes)
@@ -280,6 +290,20 @@ export class FleetService {
           eq(schema.buses.driverId, driverId),
         ),
       );
+  }
+
+  async findOneBus(municipalityId: string, id: string) {
+    const [bus] = await this.db
+      .select()
+      .from(schema.buses)
+      .where(
+        and(
+          eq(schema.buses.id, id),
+          eq(schema.buses.municipalityId, municipalityId),
+        ),
+      );
+    if (!bus) throw new NotFoundException('Bus not found');
+    return bus;
   }
 
   async updateBus(

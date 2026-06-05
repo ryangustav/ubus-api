@@ -18,7 +18,10 @@ import {
 import { AuthService } from './application/auth.service';
 import { RegisterDto } from './application/dto/register.dto';
 import { LoginDto } from './application/dto/login.dto';
-import { PasswordRedefinitionDto } from './application/dto/password-reset.dto';
+import {
+  PasswordRedefinitionDto,
+  SendPasswordResetEmailDto,
+} from './application/dto/password-reset.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { JwtPayload } from './infrastructure/strategies/jwt.strategy';
@@ -53,17 +56,15 @@ export class AuthController {
   }
 
   @Post('password-email-send')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Send password reset email',
     description:
-      'Sends an email with a reset link to the authenticated user. Token expires in 1 hour.',
+      'Sends an email with a reset link to the user. Token expires in 1 hour.',
   })
+  @ApiBody({ type: SendPasswordResetEmailDto })
   @ApiResponse({ status: 200, description: 'Email sent' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  sendPasswordResetEmail(@CurrentUser() user: JwtPayload) {
-    return this.auth.sendPasswordResetEmail(user.sub);
+  sendPasswordResetEmail(@Body() dto: SendPasswordResetEmailDto) {
+    return this.auth.sendPasswordResetEmail(dto.email);
   }
 
   @Get('password-email-preview')

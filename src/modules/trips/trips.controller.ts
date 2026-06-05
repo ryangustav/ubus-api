@@ -18,7 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { TripsService } from './application/trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
-import { UpdateTripDto } from './dto/update-trip.dto';
+import { UpdateTripDto, AssignDriverDto } from './dto/update-trip.dto';
 import { ScheduleTripsDto } from './dto/schedule-trips.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
@@ -95,6 +95,26 @@ export class TripsController {
   @ApiBody({ type: UpdateTripDto })
   updateTrip(@Param('tripId') tripId: string, @Body() dto: UpdateTripDto) {
     return this.trips.updateTrip(tripId, dto);
+  }
+
+  @Patch(':tripId/driver')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Assign a driver to a trip' })
+  @ApiParam({ name: 'tripId' })
+  @ApiBody({ type: AssignDriverDto })
+  assignDriver(
+    @Param('tripId') tripId: string,
+    @Body() dto: AssignDriverDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.trips.assignDriverToTrip(
+      tripId,
+      dto.driverId ?? null,
+      user.municipalityId,
+      user.role,
+    );
   }
 
   @Post(':tripId/confirmation-alert')

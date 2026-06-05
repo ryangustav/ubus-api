@@ -140,6 +140,13 @@ export class FleetController {
     return this.fleet.listBusesByDriver(user.municipalityId, user.sub);
   }
 
+  @Get('buses/:id')
+  @ApiOperation({ summary: 'Get bus details by ID' })
+  @ApiParam({ name: 'id' })
+  findOneBus(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.fleet.findOneBus(user.municipalityId, id);
+  }
+
   @Post('buses')
   @UseGuards(RolesGuard)
   @Roles('DRIVER', 'MANAGER')

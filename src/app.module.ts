@@ -17,6 +17,9 @@ import { HealthModule } from './modules/health/health.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { CronModule } from './modules/cron/cron.module';
+import { RatingsModule } from './modules/ratings/ratings.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
+import { DriverModule } from './modules/driver/driver.module';
 
 import { ThrottlerModule } from '@nestjs/throttler';
 
@@ -46,6 +49,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
     NotificationsModule,
     UploadsModule,
     CronModule,
+    RatingsModule,
+    AttendanceModule,
+    DriverModule,
   ],
 })
 export class AppModule {}

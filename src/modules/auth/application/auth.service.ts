@@ -20,6 +20,7 @@ import { passwordRedefinitionSchema } from './dto/password-reset.dto';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../../../shared/email/email.service';
 import type { JwtPayload } from '../infrastructure/strategies/jwt.strategy';
+import { mapUserToDto } from '../../users/application/users.service';
 
 const PASSWORD_RESET_PREFIX = 'password-reset:';
 const PASSWORD_RESET_TTL = 3600; // 1 hour
@@ -215,19 +216,21 @@ export class AuthService {
       expiresIn: '7d',
     });
 
-    return { accessToken };
+    return { accessToken, user: mapUserToDto(u) };
   }
 
-  async sendPasswordResetEmail(userId: string): Promise<{ message: string }> {
+  async sendPasswordResetEmail(email: string): Promise<{ message: string }> {
     const [user] = await this.db
       .select({
         id: schema.users.id,
         email: schema.users.email,
       })
       .from(schema.users)
-      .where(eq(schema.users.id, userId));
+      .where(eq(schema.users.email, email));
 
-    if (!user) throw new UnauthorizedException('User not found');
+    if (!user) {
+      return { message: 'Password reset email sent' };
+    }
 
     const token = randomBytes(32).toString('hex'); // 64 chars
     const redisKey = `${PASSWORD_RESET_PREFIX}${token}`;

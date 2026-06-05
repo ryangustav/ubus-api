@@ -37,6 +37,9 @@ RUN ESBUILD_VER=$(node -p "require('esbuild/package.json').version") \
 # No QEMU emulation of npm/node-gyp, so no "Illegal instruction" crashes.
 FROM node:20-alpine AS runner
 
+RUN apk add --no-cache tzdata
+ENV TZ=America/Sao_Paulo
+
 WORKDIR /app
 
 ENV NODE_ENV=production

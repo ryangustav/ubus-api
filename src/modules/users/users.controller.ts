@@ -28,6 +28,20 @@ import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/infrastructure/strategies/jwt.strategy';
 
 class UpdateStatusDto {
+  @ApiProperty({
+    enum: ['APPROVED', 'REJECTED', 'RENEWAL_PENDING', 'SUSPENDED', 'INACTIVE'],
+  })
+  @IsEnum(['APPROVED', 'REJECTED', 'RENEWAL_PENDING', 'SUSPENDED', 'INACTIVE'])
+  @IsNotEmpty()
+  status!:
+    | 'APPROVED'
+    | 'REJECTED'
+    | 'RENEWAL_PENDING'
+    | 'SUSPENDED'
+    | 'INACTIVE';
+}
+
+class ReviewRenewalDto {
   @ApiProperty({ enum: ['APPROVED', 'REJECTED'] })
   @IsEnum(['APPROVED', 'REJECTED'])
   @IsNotEmpty()
@@ -104,8 +118,14 @@ export class UsersController {
     @CurrentUser() user: JwtPayload,
     @Query('role') role?: string,
     @Query('status') status?: string,
+    @Query('municipalityId') municipalityId?: string,
+    @Query('accessibilityStatus') accessibilityStatus?: string,
   ) {
-    return this.users.listUsers(user.municipalityId, { role, status });
+    const mId =
+      user.role === 'SUPER_ADMIN' && municipalityId
+        ? municipalityId
+        : user.municipalityId;
+    return this.users.listUsers(mId, { role, status, accessibilityStatus });
   }
 
   @Get('pending')
@@ -114,6 +134,15 @@ export class UsersController {
   @ApiOperation({ summary: 'List pending users (manager approval)' })
   listPending(@CurrentUser() user: JwtPayload) {
     return this.users.listPending(user.municipalityId);
+  }
+
+  @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Get user details by ID' })
+  @ApiParam({ name: 'id' })
+  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.users.findOne(id, user.municipalityId, user.role);
   }
 
   // ── Profile ──────────────────────────────────────────
@@ -175,7 +204,16 @@ export class UsersController {
     schema: {
       type: 'object',
       properties: {
-        status: { type: 'string', enum: ['APPROVED', 'REJECTED'] },
+        status: {
+          type: 'string',
+          enum: [
+            'APPROVED',
+            'REJECTED',
+            'RENEWAL_PENDING',
+            'SUSPENDED',
+            'INACTIVE',
+          ],
+        },
       },
     },
   })
@@ -218,7 +256,7 @@ export class UsersController {
   })
   reviewRenewal(
     @Param('id') id: string,
-    @Body() dto: UpdateStatusDto,
+    @Body() dto: ReviewRenewalDto,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.users.reviewRenewal(id, dto.status, user.municipalityId);

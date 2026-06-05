@@ -93,3 +93,10 @@ export class UpdateTripDto {
     | 'FINISHED'
     | 'CANCELLED';
 }
+
+export class AssignDriverDto {
+  @ApiPropertyOptional({ example: 'uuid-of-driver' })
+  @IsUUID()
+  @IsOptional()
+  driverId?: string | null;
+}

@@ -68,6 +68,28 @@ export class CreateRouteDto {
   @IsBoolean()
   @IsOptional()
   requiresElevator?: boolean;
+
+  @ApiPropertyOptional({
+    example: '07:00',
+    description: 'Outbound departure time (HH:mm)',
+  })
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, {
+    message: 'Must be a valid time in HH:mm format',
+  })
+  @IsOptional()
+  departureTimeOutbound?: string;
+
+  @ApiPropertyOptional({
+    example: '18:00',
+    description: 'Inbound departure time (HH:mm)',
+  })
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, {
+    message: 'Must be a valid time in HH:mm format',
+  })
+  @IsOptional()
+  departureTimeInbound?: string;
 }
 
 export class UpdateRouteDto {
@@ -125,4 +147,26 @@ export class UpdateRouteDto {
   @IsBoolean()
   @IsOptional()
   requiresElevator?: boolean;
+
+  @ApiPropertyOptional({
+    example: '07:00',
+    description: 'Outbound departure time (HH:mm)',
+  })
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, {
+    message: 'Must be a valid time in HH:mm format',
+  })
+  @IsOptional()
+  departureTimeOutbound?: string;
+
+  @ApiPropertyOptional({
+    example: '18:00',
+    description: 'Inbound departure time (HH:mm)',
+  })
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, {
+    message: 'Must be a valid time in HH:mm format',
+  })
+  @IsOptional()
+  departureTimeInbound?: string;
 }

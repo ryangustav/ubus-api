@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsNumber,
   IsUUID,
+  IsArray,
 } from 'class-validator';
 
 export class ScheduleTripsDto {
@@ -21,18 +22,30 @@ export class ScheduleTripsDto {
   @IsUUID()
   routeId: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '2026-06-01',
     description: 'Start date (YYYY-MM-DD)',
   })
   @IsString()
-  @IsNotEmpty()
-  startDate: string;
+  @IsOptional()
+  startDate?: string;
 
-  @ApiProperty({ example: '2026-06-30', description: 'End date (YYYY-MM-DD)' })
+  @ApiPropertyOptional({
+    example: '2026-06-30',
+    description: 'End date (YYYY-MM-DD)',
+  })
   @IsString()
-  @IsNotEmpty()
-  endDate: string;
+  @IsOptional()
+  endDate?: string;
+
+  @ApiPropertyOptional({
+    example: ['2026-06-01', '2026-06-03'],
+    description: 'List of specific dates (YYYY-MM-DD)',
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  dates?: string[];
 
   @ApiProperty({ example: 'uuid-of-bus' })
   @IsUUID()

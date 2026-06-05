@@ -43,7 +43,12 @@ export class ReservationsService {
       user.registrationStatus === 'SUSPENDED' ||
       user.registrationStatus === 'INACTIVE'
     ) {
-      throw new ForbiddenException('ACCOUNT_SUSPENDED');
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Account is suspended or inactive',
+        errorCode: 'ACCOUNT_SUSPENDED',
+        error: 'Forbidden',
+      });
     }
 
     // 2. Fetch Trip

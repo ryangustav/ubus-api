@@ -10,6 +10,75 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 
+export function mapUserToDto(user: any) {
+  if (!user) return null;
+
+  // Masking CPF (e.g. 12345678901 -> ***.*56.789-**)
+  let maskedCpf = user.cpf;
+  if (maskedCpf) {
+    const d = maskedCpf.replace(/\D/g, '');
+    if (d.length === 11) {
+      maskedCpf = `***.*${d.slice(4, 6)}.${d.slice(6, 9)}-**`;
+    }
+  }
+
+  // Masking Phone (e.g. 79999991234 -> (**) * ****-1234)
+  let maskedPhone = user.phone;
+  if (maskedPhone) {
+    const d = maskedPhone.replace(/\D/g, '');
+    if (d.length >= 10) {
+      if (d.length === 11) {
+        maskedPhone = `(**) * ****-${d.slice(-4)}`;
+      } else {
+        maskedPhone = `(**) ****-${d.slice(-4)}`;
+      }
+    }
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    cpf: maskedCpf,
+    phone: maskedPhone,
+    role: user.role,
+    municipalityId: user.municipalityId,
+    status: user.registrationStatus,
+    priorityLevel: user.priorityLevel ?? null,
+    defaultRouteId: user.defaultRouteId ?? null,
+    defaultPointId: user.defaultPointId ?? null,
+    needsWheelchair: user.needsWheelchair ?? false,
+    accessibilityReason: user.accessibilityReason ?? null,
+    accessibilityDocUrl: user.accessibilityDocUrl ?? null,
+    accessibilityStatus: user.accessibilityStatus ?? null,
+    accessibilityApprovedAt: user.accessibilityApprovedAt
+      ? new Date(user.accessibilityApprovedAt).toISOString()
+      : null,
+    accessibilityReviewNote: user.accessibilityReviewNote ?? null,
+    accessibilityConsecutivePeriods: user.accessibilityConsecutivePeriods ?? 0,
+    photoUrl: user.profilePictureUrl ?? null,
+    gradeFileUrl: user.scheduleUrl ?? null,
+    residenciaFileUrl: user.residenceProofUrl ?? null,
+    expiresAt: user.expiresAt ? new Date(user.expiresAt).toISOString() : null,
+    renewalDeadline: user.renewalDeadline
+      ? new Date(user.renewalDeadline).toISOString()
+      : null,
+    renewalSubmittedAt: user.renewalSubmittedAt
+      ? new Date(user.renewalSubmittedAt).toISOString()
+      : null,
+    createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : null,
+  };
+}
+
+export function calculateExpiryDate(now: Date = new Date()): Date {
+  const currentYear = now.getFullYear();
+  if (now.getMonth() <= 5) {
+    return new Date(currentYear, 5, 30, 23, 59, 59, 999);
+  } else {
+    return new Date(currentYear, 11, 31, 23, 59, 59, 999);
+  }
+}
+
 @Injectable()
 export class UsersService {
   constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
@@ -17,7 +86,7 @@ export class UsersService {
   // ── List with filters ────────────────────────────────
   async listUsers(
     municipalityId: string,
-    filters: { role?: string; status?: string },
+    filters: { role?: string; status?: string; accessibilityStatus?: string },
   ) {
     const conditions = [
       eq(schema.users.municipalityId, municipalityId),
@@ -32,43 +101,27 @@ export class UsersService {
         eq(schema.users.registrationStatus, filters.status as any),
       );
     }
+    if (filters.accessibilityStatus) {
+      conditions.push(
+        eq(
+          schema.users.accessibilityStatus,
+          filters.accessibilityStatus as any,
+        ),
+      );
+    }
 
-    return this.db
-      .select({
-        id: schema.users.id,
-        name: schema.users.name,
-        email: schema.users.email,
-        cpf: schema.users.cpf,
-        phone: schema.users.phone,
-        role: schema.users.role,
-        registrationStatus: schema.users.registrationStatus,
-        profilePictureUrl: schema.users.profilePictureUrl,
-        needsWheelchair: schema.users.needsWheelchair,
-        accessibilityReason: schema.users.accessibilityReason,
-        accessibilityStatus: schema.users.accessibilityStatus,
-        expiresAt: schema.users.expiresAt,
-        createdAt: schema.users.createdAt,
-      })
+    const result = await this.db
+      .select()
       .from(schema.users)
       .where(and(...conditions));
+
+    return result.map(mapUserToDto);
   }
 
   // ── Pending ──────────────────────────────────────────
   async listPending(municipalityId: string) {
-    return this.db
-      .select({
-        id: schema.users.id,
-        name: schema.users.name,
-        email: schema.users.email,
-        cpf: schema.users.cpf,
-        phone: schema.users.phone,
-        role: schema.users.role,
-        profilePictureUrl: schema.users.profilePictureUrl,
-        scheduleUrl: schema.users.scheduleUrl,
-        residenceProofUrl: schema.users.residenceProofUrl,
-        needsWheelchair: schema.users.needsWheelchair,
-        createdAt: schema.users.createdAt,
-      })
+    const result = await this.db
+      .select()
       .from(schema.users)
       .where(
         and(
@@ -78,12 +131,18 @@ export class UsersService {
           isNull(schema.users.deletedAt),
         ),
       );
+    return result.map(mapUserToDto);
   }
 
   // ── Update Status (Approve/Reject) ───────────────────
   async updateStatus(
     id: string,
-    status: 'APPROVED' | 'REJECTED',
+    status:
+      | 'APPROVED'
+      | 'REJECTED'
+      | 'RENEWAL_PENDING'
+      | 'SUSPENDED'
+      | 'INACTIVE',
     municipalityId: string,
     role?: string,
   ) {
@@ -96,22 +155,13 @@ export class UsersService {
     if (user.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('User belongs to another municipality');
     }
-    if (
-      user.registrationStatus !== 'PENDING' &&
-      user.registrationStatus !== 'RENEWAL_PENDING'
-    ) {
-      throw new ForbiddenException('User is not pending approval');
-    }
 
     const updateSet: Partial<typeof schema.users.$inferInsert> = {
       registrationStatus: status,
     };
 
-    // When approving, set semester expiry to 6 months from now
     if (status === 'APPROVED') {
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + 6);
-      updateSet.expiresAt = expiresAt;
+      updateSet.expiresAt = calculateExpiryDate();
     }
 
     const [updated] = await this.db
@@ -125,6 +175,20 @@ export class UsersService {
       });
 
     return updated;
+  }
+
+  // ── Find One ─────────────────────────────────────────
+  async findOne(id: string, municipalityId: string, role: string) {
+    const [user] = await this.db
+      .select()
+      .from(schema.users)
+      .where(and(eq(schema.users.id, id), isNull(schema.users.deletedAt)));
+
+    if (!user) throw new NotFoundException('User not found');
+    if (user.municipalityId !== municipalityId && role !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('User belongs to another municipality');
+    }
+    return mapUserToDto(user);
   }
 
   // ── Update Point ─────────────────────────────────────
@@ -158,47 +222,30 @@ export class UsersService {
         role: schema.users.role,
         municipalityId: schema.users.municipalityId,
         defaultPointId: schema.users.defaultPointId,
+        defaultRouteId: schema.users.defaultRouteId,
         profilePictureUrl: schema.users.profilePictureUrl,
         registrationStatus: schema.users.registrationStatus,
         needsWheelchair: schema.users.needsWheelchair,
+        priorityLevel: schema.users.priorityLevel,
         expiresAt: schema.users.expiresAt,
         renewalDeadline: schema.users.renewalDeadline,
+        renewalSubmittedAt: schema.users.renewalSubmittedAt,
         accessibilityReason: schema.users.accessibilityReason,
+        accessibilityDocUrl: schema.users.accessibilityDocUrl,
         accessibilityStatus: schema.users.accessibilityStatus,
+        accessibilityApprovedAt: schema.users.accessibilityApprovedAt,
+        accessibilityReviewNote: schema.users.accessibilityReviewNote,
+        accessibilityConsecutivePeriods:
+          schema.users.accessibilityConsecutivePeriods,
+        scheduleUrl: schema.users.scheduleUrl,
+        residenceProofUrl: schema.users.residenceProofUrl,
         createdAt: schema.users.createdAt,
       })
       .from(schema.users)
       .where(and(eq(schema.users.id, userId), isNull(schema.users.deletedAt)));
 
     if (!user) throw new NotFoundException('User not found');
-
-    // Masking CPF (e.g. 12345678901 -> ***.*56.789-**)
-    let maskedCpf = user.cpf;
-    if (maskedCpf) {
-      const d = maskedCpf.replace(/\D/g, '');
-      if (d.length === 11) {
-        maskedCpf = `***.*${d.slice(4, 6)}.${d.slice(6, 9)}-**`;
-      }
-    }
-
-    // Masking Phone (e.g. 79999991234 -> (**) * ****-1234)
-    let maskedPhone = user.phone;
-    if (maskedPhone) {
-      const d = maskedPhone.replace(/\D/g, '');
-      if (d.length >= 10) {
-        if (d.length === 11) {
-          maskedPhone = `(**) * ****-${d.slice(-4)}`;
-        } else {
-          maskedPhone = `(**) ****-${d.slice(-4)}`;
-        }
-      }
-    }
-
-    return {
-      ...user,
-      cpf: maskedCpf,
-      phone: maskedPhone,
-    };
+    return mapUserToDto(user);
   }
 
   // ── Update Me ────────────────────────────────────────
@@ -299,9 +346,7 @@ export class UsersService {
     };
 
     if (status === 'APPROVED') {
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + 6);
-      updateSet.expiresAt = expiresAt;
+      updateSet.expiresAt = calculateExpiryDate();
     }
 
     const [updated] = await this.db
@@ -352,16 +397,8 @@ export class UsersService {
   }
 
   async listAccessibilityPending(municipalityId: string) {
-    return this.db
-      .select({
-        id: schema.users.id,
-        name: schema.users.name,
-        email: schema.users.email,
-        accessibilityReason: schema.users.accessibilityReason,
-        accessibilityDocUrl: schema.users.accessibilityDocUrl,
-        accessibilityStatus: schema.users.accessibilityStatus,
-        createdAt: schema.users.createdAt,
-      })
+    const result = await this.db
+      .select()
       .from(schema.users)
       .where(
         and(
@@ -370,6 +407,7 @@ export class UsersService {
           isNull(schema.users.deletedAt),
         ),
       );
+    return result.map(mapUserToDto);
   }
 
   async reviewAccessibility(

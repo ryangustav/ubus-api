@@ -1,8 +1,8 @@
-CREATE TYPE "public"."registration_status" AS ENUM('PENDING', 'APPROVED', 'REJECTED');--> statement-breakpoint
-CREATE TYPE "public"."reservation_status" AS ENUM('CONFIRMED', 'PRESENT', 'ABSENT', 'CANCELLED_BY_SYSTEM', 'EXCESS');--> statement-breakpoint
-CREATE TYPE "public"."trip_direction" AS ENUM('OUTBOUND', 'INBOUND');--> statement-breakpoint
-CREATE TYPE "public"."trip_status" AS ENUM('SCHEDULED', 'OPEN_FOR_RESERVATION', 'ONGOING', 'FINISHED', 'CANCELLED');--> statement-breakpoint
-CREATE TYPE "public"."user_role" AS ENUM('SUPER_ADMIN', 'MANAGER', 'DRIVER', 'LEADER', 'STUDENT', 'RIDE_SHARE');--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."registration_status" AS ENUM('PENDING', 'APPROVED', 'REJECTED'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."reservation_status" AS ENUM('CONFIRMED', 'PRESENT', 'ABSENT', 'CANCELLED_BY_SYSTEM', 'EXCESS'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."trip_direction" AS ENUM('OUTBOUND', 'INBOUND'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."trip_status" AS ENUM('SCHEDULED', 'OPEN_FOR_RESERVATION', 'ONGOING', 'FINISHED', 'CANCELLED'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."user_role" AS ENUM('SUPER_ADMIN', 'MANAGER', 'DRIVER', 'LEADER', 'STUDENT', 'RIDE_SHARE'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "buses" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"municipality_id" uuid NOT NULL,

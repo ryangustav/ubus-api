@@ -162,16 +162,35 @@ describe('AuthService', () => {
       );
     });
 
-    it('should return token if valid', async () => {
+    it('should return token and user if valid', async () => {
       const mockUser = [
         {
           user: {
             id: 'user1',
-            log: 'u1',
+            name: 'Test User',
             passwordHash: 'hash',
             email: 'a@a.com',
+            cpf: '12345678901',
+            phone: '79999991234',
             role: 'STUDENT',
             municipalityId: 'mun1',
+            registrationStatus: 'ACTIVE',
+            priorityLevel: null,
+            defaultRouteId: null,
+            defaultPointId: null,
+            needsWheelchair: false,
+            accessibilityReason: null,
+            accessibilityDocUrl: null,
+            accessibilityStatus: null,
+            accessibilityApprovedAt: null,
+            accessibilityReviewNote: null,
+            accessibilityConsecutivePeriods: 0,
+            profilePictureUrl: null,
+            scheduleUrl: null,
+            residenceProofUrl: null,
+            expiresAt: null,
+            renewalDeadline: null,
+            tokenVersion: 0,
           },
           municipality: { active: true },
         },
@@ -187,7 +206,10 @@ describe('AuthService', () => {
 
       const result = await service.login(loginDto);
       expect(result.accessToken).toBe('token');
-      expect((result as any).user).toBeUndefined();
+      expect((result as any).user).toBeDefined();
+      expect((result as any).user.id).toBe('user1');
+      expect((result as any).user.email).toBe('a@a.com');
+      expect((result as any).user.role).toBe('STUDENT');
     });
   });
 });

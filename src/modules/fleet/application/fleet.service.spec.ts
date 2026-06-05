@@ -11,10 +11,7 @@ describe('FleetService', () => {
   beforeEach(async () => {
     mockDrizzle.reset();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        FleetService,
-        { provide: DRIZZLE, useValue: mockDrizzle },
-      ],
+      providers: [FleetService, { provide: DRIZZLE, useValue: mockDrizzle }],
     }).compile();
 
     service = module.get<FleetService>(FleetService);
@@ -75,7 +72,9 @@ describe('FleetService', () => {
       const updateChain = {
         set: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([{ id: 'route1', name: 'New name' }]),
+        returning: jest
+          .fn()
+          .mockResolvedValue([{ id: 'route1', name: 'New name' }]),
       };
       db.update.mockReturnValue(updateChain as any);
 

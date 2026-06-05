@@ -23,23 +23,19 @@ export class TripsService {
     @InjectRedis() private redis: Redis,
   ) {}
 
-  async createTrip(
-    dto: {
-      tripId: string;
-      tripDate: string;
-      shift: string;
-      direction: 'OUTBOUND' | 'INBOUND' | string;
-      routeId: string;
-      busId: string;
-      driverId?: string;
-      realCapacity: number;
-      votingOpen: string;
-      votingClose: string;
-      leaderIds?: string[];
-    },
-    municipalityId: string,
-    role?: string,
-  ) {
+  async createTrip(dto: {
+    tripId: string;
+    tripDate: string;
+    shift: string;
+    direction: 'OUTBOUND' | 'INBOUND';
+    routeId: string;
+    busId: string;
+    driverId?: string;
+    realCapacity: number;
+    votingOpen: string;
+    votingClose: string;
+    leaderIds?: string[];
+  }) {
     const [route] = await this.db
       .select({ requiresElevator: schema.routes.requiresElevator })
       .from(schema.routes)
@@ -56,7 +52,7 @@ export class TripsService {
         id: dto.tripId,
         tripDate: dto.tripDate,
         shift: dto.shift,
-        direction: dto.direction as 'OUTBOUND' | 'INBOUND',
+        direction: dto.direction,
         routeId: dto.routeId,
         busId: dto.busId,
         driverId: dto.driverId ?? null,
@@ -113,7 +109,7 @@ export class TripsService {
     dto: Partial<{
       tripDate: string;
       shift: string;
-      direction: 'OUTBOUND' | 'INBOUND' | string;
+      direction: 'OUTBOUND' | 'INBOUND';
       routeId: string;
       busId: string;
       driverId: string | null;
@@ -123,8 +119,6 @@ export class TripsService {
       leaderIds: string[];
       status: string;
     }>,
-    municipalityId: string,
-    role?: string,
   ) {
     const updates: Record<string, unknown> = {};
     if (dto.tripDate !== undefined) updates.tripDate = dto.tripDate;
@@ -210,9 +204,9 @@ export class TripsService {
         const shiftChar = dto.shift.toUpperCase().startsWith('M')
           ? 'M'
           : dto.shift.toUpperCase().startsWith('A') ||
-            dto.shift.toUpperCase().startsWith('T')
-          ? 'T'
-          : 'N';
+              dto.shift.toUpperCase().startsWith('T')
+            ? 'T'
+            : 'N';
 
         const tripId = `${smartDate}-${bus.identificationNumber}-${shiftChar}`;
 
@@ -398,7 +392,8 @@ export class TripsService {
       .select()
       .from(schema.trips)
       .where(eq(schema.trips.id, destinationTripId));
-    if (!destinationTrip) throw new NotFoundException('Destination trip not found');
+    if (!destinationTrip)
+      throw new NotFoundException('Destination trip not found');
 
     const isLeader =
       Array.isArray(originTrip.leaderIds) &&
@@ -425,7 +420,9 @@ export class TripsService {
       .where(eq(schema.reservations.tripId, destinationTripId));
 
     const occupiedSet = new Set(
-      occupiedDestination.map((o) => o.seatNumber).filter((n): n is number => n != null),
+      occupiedDestination
+        .map((o) => o.seatNumber)
+        .filter((n): n is number => n != null),
     );
 
     let seat = 1;

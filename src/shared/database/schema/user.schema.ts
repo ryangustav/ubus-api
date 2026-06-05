@@ -8,7 +8,12 @@ import {
   unique,
   boolean,
 } from 'drizzle-orm/pg-core';
-import { userRoleEnum, registrationStatusEnum, accessibilityReasonEnum, accessibilityStatusEnum } from './enums';
+import {
+  userRoleEnum,
+  registrationStatusEnum,
+  accessibilityReasonEnum,
+  accessibilityStatusEnum,
+} from './enums';
 import { municipalities } from './municipality.schema';
 import { routes, points } from './fleet.schema';
 
@@ -40,13 +45,21 @@ export const users = pgTable(
     }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     renewalDeadline: timestamp('renewal_deadline', { withTimezone: true }),
-    renewalSubmittedAt: timestamp('renewal_submitted_at', { withTimezone: true }),
+    renewalSubmittedAt: timestamp('renewal_submitted_at', {
+      withTimezone: true,
+    }),
     accessibilityReason: accessibilityReasonEnum('accessibility_reason'),
     accessibilityDocUrl: text('accessibility_doc_url'),
     accessibilityStatus: accessibilityStatusEnum('accessibility_status'),
-    accessibilityApprovedAt: timestamp('accessibility_approved_at', { withTimezone: true }),
+    accessibilityApprovedAt: timestamp('accessibility_approved_at', {
+      withTimezone: true,
+    }),
     accessibilityReviewNote: text('accessibility_review_note'),
-    accessibilityConsecutivePeriods: integer('accessibility_consecutive_periods').default(0).notNull(),
+    accessibilityConsecutivePeriods: integer(
+      'accessibility_consecutive_periods',
+    )
+      .default(0)
+      .notNull(),
     tokenVersion: integer('token_version').default(1).notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),

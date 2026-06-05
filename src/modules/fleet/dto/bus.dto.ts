@@ -1,8 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min, IsBoolean, IsUUID, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsInt,
+  Min,
+  IsBoolean,
+  IsUUID,
+  IsArray,
+} from 'class-validator';
 
 export class CreateBusDto {
-  @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
+  @ApiPropertyOptional({
+    example: 'uuid-of-municipality',
+    description: 'Target municipality (SUPER_ADMIN only)',
+  })
   @IsUUID()
   @IsOptional()
   municipalityId?: string;
@@ -35,12 +47,18 @@ export class CreateBusDto {
   @IsOptional()
   hasAirConditioning?: boolean;
 
-  @ApiPropertyOptional({ example: true, description: 'Has elevator for accessibility' })
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Has elevator for accessibility',
+  })
   @IsBoolean()
   @IsOptional()
   hasElevator?: boolean;
 
-  @ApiPropertyOptional({ example: [1, 2, 3, 4], description: 'Preferential seat numbers' })
+  @ApiPropertyOptional({
+    example: [1, 2, 3, 4],
+    description: 'Preferential seat numbers',
+  })
   @IsArray()
   @IsInt({ each: true })
   @IsOptional()
@@ -48,7 +66,10 @@ export class CreateBusDto {
 }
 
 export class UpdateBusDto {
-  @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
+  @ApiPropertyOptional({
+    example: 'uuid-of-municipality',
+    description: 'Target municipality (SUPER_ADMIN only)',
+  })
   @IsUUID()
   @IsOptional()
   municipalityId?: string;
@@ -79,12 +100,18 @@ export class UpdateBusDto {
   @IsOptional()
   hasAirConditioning?: boolean;
 
-  @ApiPropertyOptional({ example: true, description: 'Has elevator for accessibility' })
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Has elevator for accessibility',
+  })
   @IsBoolean()
   @IsOptional()
   hasElevator?: boolean;
 
-  @ApiPropertyOptional({ example: [1, 2, 3, 4], description: 'Preferential seat numbers' })
+  @ApiPropertyOptional({
+    example: [1, 2, 3, 4],
+    description: 'Preferential seat numbers',
+  })
   @IsArray()
   @IsInt({ each: true })
   @IsOptional()

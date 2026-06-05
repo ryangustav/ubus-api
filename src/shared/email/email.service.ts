@@ -156,7 +156,11 @@ export class EmailService {
         Este código é válido por <strong style="color: #0F172A; font-weight: 600;">24 horas</strong>.
       </p>
     `;
-    return this.getEmailLayout(title, content, 'Se você não solicitou este registro, por favor ignore esta mensagem.');
+    return this.getEmailLayout(
+      title,
+      content,
+      'Se você não solicitou este registro, por favor ignore esta mensagem.',
+    );
   }
 
   async sendVerificationCode(
@@ -199,7 +203,8 @@ export class EmailService {
         </tr>
       </table>
     `;
-    const securityNote = 'Se você não solicitou esta alteração, nenhuma ação é necessária — sua senha permanece inalterada. Caso suspeite de acesso não autorizado à sua conta, entre em contato com o suporte.';
+    const securityNote =
+      'Se você não solicitou esta alteração, nenhuma ação é necessária — sua senha permanece inalterada. Caso suspeite de acesso não autorizado à sua conta, entre em contato com o suporte.';
     return this.getEmailLayout(title, content, securityNote);
   }
 

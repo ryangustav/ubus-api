@@ -57,11 +57,15 @@ export async function loadOciSecrets(): Promise<void> {
 
     let decodedStr: string;
     if (contentType === 'BASE64') {
-      decodedStr = Buffer.from(bundleContent.content, 'base64').toString('utf-8');
+      decodedStr = Buffer.from(bundleContent.content, 'base64').toString(
+        'utf-8',
+      );
     } else if (contentType === 'PLAIN') {
       decodedStr = bundleContent.content;
     } else {
-      console.warn(`⚠️  Unsupported OCI Secret content type: ${contentType}. Trying to treat as RAW.`);
+      console.warn(
+        `⚠️  Unsupported OCI Secret content type: ${contentType}. Trying to treat as RAW.`,
+      );
       decodedStr = bundleContent.content;
     }
 
@@ -72,7 +76,10 @@ export async function loadOciSecrets(): Promise<void> {
     try {
       parsedSecrets = JSON.parse(decodedStr) as Record<string, string>;
     } catch (err) {
-      console.error('❌  Failed to parse OCI Secret content as JSON. Content preview (first 50 chars):', decodedStr.substring(0, 50));
+      console.error(
+        '❌  Failed to parse OCI Secret content as JSON. Content preview (first 50 chars):',
+        decodedStr.substring(0, 50),
+      );
       throw err;
     }
 
@@ -83,7 +90,9 @@ export async function loadOciSecrets(): Promise<void> {
       keysLoaded.push(key);
     }
 
-    console.log(`✅  Successfully loaded ${keysLoaded.length} secrets from OCI Vault.`);
+    console.log(
+      `✅  Successfully loaded ${keysLoaded.length} secrets from OCI Vault.`,
+    );
     console.log(`Keys: [${keysLoaded.join(', ')}]`);
   } catch (error) {
     console.error('❌  Error fetching secrets from OCI Vault:', error);

@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, Min, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  Min,
+  IsEnum,
+} from 'class-validator';
 
 export class CreateReserveDto {
   @ApiProperty({ example: '20260228-20120-M' })
@@ -38,21 +46,9 @@ export class UpdateReservationDto {
   seatNumber?: number | null;
 
   @ApiPropertyOptional({
-    enum: [
-      'CONFIRMED',
-      'PRESENT',
-      'ABSENT',
-      'CANCELLED_BY_SYSTEM',
-      'EXCESS',
-    ],
+    enum: ['CONFIRMED', 'PRESENT', 'ABSENT', 'CANCELLED_BY_SYSTEM', 'EXCESS'],
   })
-  @IsEnum([
-    'CONFIRMED',
-    'PRESENT',
-    'ABSENT',
-    'CANCELLED_BY_SYSTEM',
-    'EXCESS',
-  ])
+  @IsEnum(['CONFIRMED', 'PRESENT', 'ABSENT', 'CANCELLED_BY_SYSTEM', 'EXCESS'])
   @IsOptional()
   status?:
     | 'CONFIRMED'

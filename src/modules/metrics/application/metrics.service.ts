@@ -29,10 +29,7 @@ export class MetricsService {
         count: sql<number>`count(*)::int`,
       })
       .from(schema.trips)
-      .innerJoin(
-        schema.routes,
-        eq(schema.trips.routeId, schema.routes.id),
-      )
+      .innerJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
       .where(
         and(
           eq(schema.routes.municipalityId, municipalityId),

@@ -72,7 +72,8 @@ describe('AuthService', () => {
     });
 
     it('should throw ConflictException if email exists in municipality', async () => {
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce([{ id: 'mun1', active: true }]) // municipality
         .mockResolvedValueOnce([{ id: 'user1' }]) // email exists
         .mockResolvedValueOnce([]); // cpf check
@@ -89,7 +90,8 @@ describe('AuthService', () => {
     });
 
     it('should register successfully', async () => {
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce([{ id: 'mun1', active: true }]) // municipality
         .mockResolvedValueOnce([]) // email check
         .mockResolvedValueOnce([]); // cpf check

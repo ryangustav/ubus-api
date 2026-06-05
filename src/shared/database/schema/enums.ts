@@ -35,7 +35,10 @@ export const accessibilityStatusEnum = pgEnum('accessibility_status', [
   'REVOKED',
 ]);
 
-export const tripDirectionEnum = pgEnum('trip_direction', ['OUTBOUND', 'INBOUND']);
+export const tripDirectionEnum = pgEnum('trip_direction', [
+  'OUTBOUND',
+  'INBOUND',
+]);
 
 export const tripStatusEnum = pgEnum('trip_status', [
   'SCHEDULED',

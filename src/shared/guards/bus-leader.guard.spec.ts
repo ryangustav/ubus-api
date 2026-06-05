@@ -11,10 +11,7 @@ describe('BusLeaderGuard', () => {
   beforeEach(async () => {
     mockDrizzle.reset();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        BusLeaderGuard,
-        { provide: DRIZZLE, useValue: mockDrizzle },
-      ],
+      providers: [BusLeaderGuard, { provide: DRIZZLE, useValue: mockDrizzle }],
     }).compile();
 
     guard = module.get<BusLeaderGuard>(BusLeaderGuard);
@@ -56,7 +53,8 @@ describe('BusLeaderGuard', () => {
   });
 
   it('should deny if bus not found or different municipality', async () => {
-    const mockWhere = jest.fn()
+    const mockWhere = jest
+      .fn()
       .mockResolvedValueOnce([]) // No bus
       .mockResolvedValueOnce([{ municipalityId: 'mun2' }]); // Diff municipality
 
@@ -88,7 +86,8 @@ describe('BusLeaderGuard', () => {
   });
 
   it('should deny if user is not a leader of any trip using this bus', async () => {
-    const mockWhere = jest.fn()
+    const mockWhere = jest
+      .fn()
       .mockResolvedValueOnce([{ municipalityId: 'mun1' }]) // Bus found
       .mockResolvedValueOnce([{ leaderIds: ['user2'] }]); // Trip data
 
@@ -109,7 +108,8 @@ describe('BusLeaderGuard', () => {
   });
 
   it('should allow if user is a leader of a trip using this bus', async () => {
-    const mockWhere = jest.fn()
+    const mockWhere = jest
+      .fn()
       .mockResolvedValueOnce([{ municipalityId: 'mun1' }]) // Bus found
       .mockResolvedValueOnce([{ leaderIds: ['user1', 'user2'] }]); // Trip data
 

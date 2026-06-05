@@ -82,12 +82,8 @@ export class TripsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a trip (manager only)' })
   @ApiBody({ type: CreateTripDto })
-  createTrip(@CurrentUser() user: JwtPayload, @Body() dto: CreateTripDto) {
-    const municipalityId =
-      user.role === 'SUPER_ADMIN' && dto.municipalityId
-        ? dto.municipalityId
-        : user.municipalityId;
-    return this.trips.createTrip(dto, municipalityId, user.role);
+  createTrip(@Body() dto: CreateTripDto) {
+    return this.trips.createTrip(dto);
   }
 
   @Patch(':tripId')
@@ -97,16 +93,8 @@ export class TripsController {
   @ApiOperation({ summary: 'Update trip (manager only)' })
   @ApiParam({ name: 'tripId' })
   @ApiBody({ type: UpdateTripDto })
-  updateTrip(
-    @CurrentUser() user: JwtPayload,
-    @Param('tripId') tripId: string,
-    @Body() dto: UpdateTripDto,
-  ) {
-    const municipalityId =
-      user.role === 'SUPER_ADMIN' && dto.municipalityId
-        ? dto.municipalityId
-        : user.municipalityId;
-    return this.trips.updateTrip(tripId, dto, municipalityId, user.role);
+  updateTrip(@Param('tripId') tripId: string, @Body() dto: UpdateTripDto) {
+    return this.trips.updateTrip(tripId, dto);
   }
 
   @Post(':tripId/confirmation-alert')

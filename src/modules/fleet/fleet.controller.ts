@@ -112,10 +112,7 @@ export class FleetController {
   @Roles('MANAGER')
   @ApiOperation({ summary: 'Delete pick-up point' })
   @ApiParam({ name: 'id', description: 'Point ID' })
-  deletePoint(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  deletePoint(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.fleet.deletePoint(id, user.municipalityId);
   }
 

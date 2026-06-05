@@ -116,10 +116,7 @@ export class ReservationsService {
         trip: schema.trips,
       })
       .from(schema.reservations)
-      .innerJoin(
-        schema.trips,
-        eq(schema.reservations.tripId, schema.trips.id),
-      )
+      .innerJoin(schema.trips, eq(schema.reservations.tripId, schema.trips.id))
       .where(
         and(
           eq(schema.reservations.userId, userId),
@@ -143,10 +140,7 @@ export class ReservationsService {
         },
       })
       .from(schema.reservations)
-      .innerJoin(
-        schema.users,
-        eq(schema.reservations.userId, schema.users.id),
-      )
+      .innerJoin(schema.users, eq(schema.reservations.userId, schema.users.id))
       .where(eq(schema.reservations.tripId, tripId));
 
     return rows.map((r) => ({
@@ -165,9 +159,7 @@ export class ReservationsService {
           isNotNull(schema.reservations.seatNumber),
         ),
       );
-    return rows
-      .map((r) => r.seatNumber)
-      .filter((n): n is number => n != null);
+    return rows.map((r) => r.seatNumber).filter((n): n is number => n != null);
   }
 
   async getOccupiedSeatsDetailed(tripId: string) {

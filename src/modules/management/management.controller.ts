@@ -37,7 +37,9 @@ export class ManagementController {
   }
 
   @Get('public/:municipalityId/pickup-points')
-  @ApiOperation({ summary: 'List active pickup points of a municipality (public)' })
+  @ApiOperation({
+    summary: 'List active pickup points of a municipality (public)',
+  })
   @ApiParam({ name: 'municipalityId' })
   listPickupPointsPublic(@Param('municipalityId') municipalityId: string) {
     return this.management.listPickupPointsPublic(municipalityId);

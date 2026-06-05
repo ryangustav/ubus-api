@@ -2,7 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ReservationsService } from './reservations.service';
 import { DRIZZLE } from '../../../shared/database/database.module';
 import { mockDrizzle } from '../../../../test/helpers/drizzle-mock';
-import { NotFoundException, ForbiddenException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 
 describe('ReservationsService', () => {
   let service: ReservationsService;
@@ -10,7 +15,7 @@ describe('ReservationsService', () => {
 
   beforeEach(async () => {
     mockDrizzle.reset();
-    
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReservationsService,
@@ -39,7 +44,13 @@ describe('ReservationsService', () => {
     });
 
     it('should throw ForbiddenException if user is SUSPENDED', async () => {
-      const mockUser = [{ id: 'user1', registrationStatus: 'SUSPENDED', needsWheelchair: false }];
+      const mockUser = [
+        {
+          id: 'user1',
+          registrationStatus: 'SUSPENDED',
+          needsWheelchair: false,
+        },
+      ];
       const mockChain = {
         from: jest.fn().mockReturnThis(),
         where: jest.fn().mockResolvedValue(mockUser),
@@ -52,9 +63,12 @@ describe('ReservationsService', () => {
     });
 
     it('should throw NotFoundException if trip is not found', async () => {
-      const mockUser = [{ id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false }];
-      
-      const mockWhere = jest.fn()
+      const mockUser = [
+        { id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false },
+      ];
+
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce(mockUser) // user
         .mockResolvedValueOnce([]); // trip
 
@@ -70,10 +84,13 @@ describe('ReservationsService', () => {
     });
 
     it('should throw ConflictException on UNIQUE constraint violation', async () => {
-      const mockUser = [{ id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false }];
+      const mockUser = [
+        { id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false },
+      ];
       const mockTrip = [{ id: 'trip1', actualCapacity: 40 }];
 
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce(mockUser)
         .mockResolvedValueOnce(mockTrip);
 
@@ -100,10 +117,13 @@ describe('ReservationsService', () => {
     });
 
     it('should fail to create excess reservation if capacity is not full', async () => {
-      const mockUser = [{ id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false }];
+      const mockUser = [
+        { id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false },
+      ];
       const mockTrip = [{ id: 'trip1', actualCapacity: 40 }];
 
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce(mockUser)
         .mockResolvedValueOnce(mockTrip)
         .mockResolvedValueOnce(Array(39).fill({ seatNumber: 1 })); // getOccupiedSeats
@@ -120,10 +140,13 @@ describe('ReservationsService', () => {
     });
 
     it('should create excess reservation if capacity is full', async () => {
-      const mockUser = [{ id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false }];
+      const mockUser = [
+        { id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false },
+      ];
       const mockTrip = [{ id: 'trip1', actualCapacity: 40 }];
 
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce(mockUser)
         .mockResolvedValueOnce(mockTrip)
         .mockResolvedValueOnce(Array(40).fill({ seatNumber: 1 }));

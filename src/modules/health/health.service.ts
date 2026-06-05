@@ -57,9 +57,12 @@ export class HealthService {
         ok: true,
         latencyMs: Math.round(performance.now() - redisStart),
       };
-      
+
       // Check eviction policy
-      const config = (await this.redis.config('GET', 'maxmemory-policy')) as string[];
+      const config = (await this.redis.config(
+        'GET',
+        'maxmemory-policy',
+      )) as string[];
       if (config && config.length >= 2) {
         const policy = config[1];
         result.redisConfig = { maxmemoryPolicy: policy };
@@ -106,8 +109,7 @@ export class HealthService {
         iterations,
         totalRedisMs: result.redis.latencyMs ?? 0,
         totalDbMs: result.db.latencyMs ?? 0,
-        totalMs:
-          (result.redis.latencyMs ?? 0) + (result.db.latencyMs ?? 0),
+        totalMs: (result.redis.latencyMs ?? 0) + (result.db.latencyMs ?? 0),
       };
     }
 

@@ -24,10 +24,12 @@ import { ThrottlerModule } from '@nestjs/throttler';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 30, // Default 30 req/min globally
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 30, // Default 30 req/min globally
+      },
+    ]),
     DatabaseModule,
     GuardsModule,
     RedisModule,

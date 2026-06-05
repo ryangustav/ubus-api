@@ -38,10 +38,7 @@ export class ManagementService {
     return municipality;
   }
 
-  async list(opts?: {
-    excludeSystem?: boolean;
-    municipalityId?: string;
-  }) {
+  async list(opts?: { excludeSystem?: boolean; municipalityId?: string }) {
     const excludeSystem = opts?.excludeSystem ?? true;
     const municipalityId = opts?.municipalityId;
 
@@ -157,9 +154,13 @@ export class ManagementService {
       );
 
     if (existingEmail)
-      throw new ConflictException('Email already registered in this municipality');
+      throw new ConflictException(
+        'Email already registered in this municipality',
+      );
     if (existingCpf)
-      throw new ConflictException('CPF already registered in this municipality');
+      throw new ConflictException(
+        'CPF already registered in this municipality',
+      );
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const [user] = await this.db

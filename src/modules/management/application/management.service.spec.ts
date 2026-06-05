@@ -34,7 +34,9 @@ describe('ManagementService', () => {
     it('should create a municipality', async () => {
       const insertChain = {
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([{ id: 'mun1', name: 'New City' }]),
+        returning: jest
+          .fn()
+          .mockResolvedValue([{ id: 'mun1', name: 'New City' }]),
       };
       db.insert.mockReturnValue(insertChain as any);
 
@@ -105,7 +107,8 @@ describe('ManagementService', () => {
     });
 
     it('should create manager successfully', async () => {
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce([{ id: 'mun1' }]) // found municipality
         .mockResolvedValueOnce([]) // existing email
         .mockResolvedValueOnce([]); // existing cpf

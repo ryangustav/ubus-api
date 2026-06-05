@@ -77,11 +77,15 @@ export class AuthService {
       );
 
     if (existingEmail) {
-      throw new ConflictException('Email already registered in this municipality');
+      throw new ConflictException(
+        'Email already registered in this municipality',
+      );
     }
 
     if (existingCpf) {
-      throw new ConflictException('CPF already registered in this municipality');
+      throw new ConflictException(
+        'CPF already registered in this municipality',
+      );
     }
 
     if (parsed.data.role === 'MANAGER') {
@@ -117,7 +121,9 @@ export class AuthService {
         needsWheelchair: parsed.data.needsWheelchair ?? false,
         accessibilityReason: (parsed.data.accessibilityReason as any) ?? null,
         accessibilityDocUrl: parsed.data.accessibilityDocUrl ?? null,
-        accessibilityStatus: parsed.data.accessibilityReason ? 'PENDING_REVIEW' : null,
+        accessibilityStatus: parsed.data.accessibilityReason
+          ? 'PENDING_REVIEW'
+          : null,
         emailVerificationCode: verificationCode,
       })
       .returning();
@@ -227,8 +233,10 @@ export class AuthService {
     const redisKey = `${PASSWORD_RESET_PREFIX}${token}`;
     await this.redis.setex(redisKey, PASSWORD_RESET_TTL, user.id);
 
-    const frontendUrl =
-      this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const frontendUrl = this.config.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:3000',
+    );
     const resetUrl = `${frontendUrl}/user/reset-password?token=${token}`;
 
     await this.emailService.sendPasswordResetEmail(user.email, resetUrl);
@@ -237,8 +245,10 @@ export class AuthService {
   }
 
   async getPasswordResetEmailPreview(userEmail: string): Promise<string> {
-    const frontendUrl =
-      this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const frontendUrl = this.config.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:3000',
+    );
     const token = 'x'.repeat(64);
     const resetUrl = `${frontendUrl}/user/reset-password?token=${token}`;
     const html = this.emailService.getPasswordResetEmailHtml(resetUrl);

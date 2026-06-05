@@ -43,7 +43,8 @@ describe('TripsService', () => {
     });
 
     it('should throw ForbiddenException if trip belongs to another municipality', async () => {
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce([
           { id: 'trip1', routeId: 'route1', leaderIds: [] },
         ])
@@ -62,7 +63,8 @@ describe('TripsService', () => {
     });
 
     it('should trigger alert successfully if user is leader', async () => {
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce([
           { id: 'trip1', routeId: 'route1', leaderIds: ['user1'] },
         ])
@@ -86,7 +88,8 @@ describe('TripsService', () => {
 
   describe('finishAndPunish', () => {
     it('should apply penalties to unconfirmed reservations', async () => {
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce([
           { id: 'trip1', routeId: 'route1', leaderIds: ['user1'] },
         ]) // trip
@@ -116,15 +119,14 @@ describe('TripsService', () => {
 
   describe('relocation', () => {
     it('should reallocate passengers to destination trip', async () => {
-      const mockWhere = jest.fn()
+      const mockWhere = jest
+        .fn()
         .mockResolvedValueOnce([
           { id: 'trip1', routeId: 'route1', leaderIds: ['user1'] },
         ]) // origin
         .mockResolvedValueOnce([{ id: 'trip2', routeId: 'route1' }]) // destination
         .mockResolvedValueOnce([{ id: 'route1', municipalityId: 'mun1' }]) // route
-        .mockResolvedValueOnce([
-          { id: 'res1', tripId: 'trip1', seatNumber: 1 },
-        ]) // reservations
+        .mockResolvedValueOnce([{ id: 'res1', tripId: 'trip1', seatNumber: 1 }]) // reservations
         .mockResolvedValueOnce([{ seatNumber: 1 }]); // destination occupied (so seat 1 is occupied)
 
       const mockChain = {

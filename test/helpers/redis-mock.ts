@@ -4,7 +4,7 @@ export const mockRedis = {
   setex: jest.fn().mockResolvedValue('OK'),
   del: jest.fn().mockResolvedValue(1),
   ttl: jest.fn().mockResolvedValue(-2),
-  
+
   reset: function (this: any) {
     this.get.mockClear();
     this.set.mockClear();

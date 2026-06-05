@@ -1,8 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsDateString, IsArray, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  IsDateString,
+  IsArray,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateTripDto {
-  @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
+  @ApiPropertyOptional({
+    example: 'uuid-of-municipality',
+    description: 'Target municipality (SUPER_ADMIN only)',
+  })
   @IsUUID()
   @IsOptional()
   municipalityId?: string;

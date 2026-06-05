@@ -9,7 +9,10 @@ import {
 } from 'class-validator';
 
 export class ScheduleTripsDto {
-  @ApiProperty({ example: 'uuid-of-municipality', description: 'Municipality ID (SUPER_ADMIN only)' })
+  @ApiProperty({
+    example: 'uuid-of-municipality',
+    description: 'Municipality ID (SUPER_ADMIN only)',
+  })
   @IsUUID()
   @IsOptional()
   municipalityId?: string;
@@ -18,7 +21,10 @@ export class ScheduleTripsDto {
   @IsUUID()
   routeId: string;
 
-  @ApiProperty({ example: '2026-06-01', description: 'Start date (YYYY-MM-DD)' })
+  @ApiProperty({
+    example: '2026-06-01',
+    description: 'Start date (YYYY-MM-DD)',
+  })
   @IsString()
   @IsNotEmpty()
   startDate: string;

@@ -33,10 +33,7 @@ export class ReservationsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Reserve seat (student only)' })
   @ApiBody({ type: CreateReserveDto })
-  create(
-    @Req() req: { user: { sub: string } },
-    @Body() dto: CreateReserveDto,
-  ) {
+  create(@Req() req: { user: { sub: string } }, @Body() dto: CreateReserveDto) {
     return this.reservations.create({
       tripId: dto.tripId,
       userId: req.user.sub,

@@ -32,13 +32,26 @@ export const registerSchema = z.object({
   gradeFileUrl: z.string().url('Invalid grade file URL').optional(),
   residenciaFileUrl: z.string().url('Invalid residence proof URL').optional(),
   accessibilityReason: z
-    .enum(['PCD', 'TEA', 'IDOSO', 'GESTANTE', 'LACTANTE', 'MOBILIDADE_REDUZIDA'])
+    .enum([
+      'PCD',
+      'TEA',
+      'IDOSO',
+      'GESTANTE',
+      'LACTANTE',
+      'MOBILIDADE_REDUZIDA',
+    ])
     .optional(),
-  accessibilityDocUrl: z.string().url('Invalid accessibility doc URL').optional(),
+  accessibilityDocUrl: z
+    .string()
+    .url('Invalid accessibility doc URL')
+    .optional(),
 });
 
 export class RegisterDto {
-  @ApiProperty({ example: 'uuid-of-municipality', description: 'Municipality ID' })
+  @ApiProperty({
+    example: 'uuid-of-municipality',
+    description: 'Municipality ID',
+  })
   @IsUUID()
   municipalityId: string;
 
@@ -73,7 +86,10 @@ export class RegisterDto {
   @IsOptional()
   role?: 'MANAGER' | 'DRIVER' | 'LEADER' | 'STUDENT' | 'RIDE_SHARE';
 
-  @ApiPropertyOptional({ example: 1, description: '1: Holder, 2: Univ. Caronista, 3: Common Caronista' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: '1: Holder, 2: Univ. Caronista, 3: Common Caronista',
+  })
   @IsInt()
   @Min(1)
   @Max(3)
@@ -106,11 +122,31 @@ export class RegisterDto {
   residenciaFileUrl?: string;
 
   @ApiPropertyOptional({
-    enum: ['PCD', 'TEA', 'IDOSO', 'GESTANTE', 'LACTANTE', 'MOBILIDADE_REDUZIDA'],
+    enum: [
+      'PCD',
+      'TEA',
+      'IDOSO',
+      'GESTANTE',
+      'LACTANTE',
+      'MOBILIDADE_REDUZIDA',
+    ],
   })
-  @IsEnum(['PCD', 'TEA', 'IDOSO', 'GESTANTE', 'LACTANTE', 'MOBILIDADE_REDUZIDA'])
+  @IsEnum([
+    'PCD',
+    'TEA',
+    'IDOSO',
+    'GESTANTE',
+    'LACTANTE',
+    'MOBILIDADE_REDUZIDA',
+  ])
   @IsOptional()
-  accessibilityReason?: 'PCD' | 'TEA' | 'IDOSO' | 'GESTANTE' | 'LACTANTE' | 'MOBILIDADE_REDUZIDA';
+  accessibilityReason?:
+    | 'PCD'
+    | 'TEA'
+    | 'IDOSO'
+    | 'GESTANTE'
+    | 'LACTANTE'
+    | 'MOBILIDADE_REDUZIDA';
 
   @ApiPropertyOptional({ example: 'https://storage.com/proof.pdf' })
   @IsUrl()

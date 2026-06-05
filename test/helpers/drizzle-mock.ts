@@ -36,7 +36,7 @@ export const mockDrizzle = {
     this.set.mockClear();
     this.delete.mockClear();
     this.returning.mockClear();
-    
+
     // Re-setup chaining defaults
     this.select.mockReturnThis();
     this.from.mockReturnThis();

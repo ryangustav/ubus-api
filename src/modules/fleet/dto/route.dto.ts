@@ -1,8 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsInt, Min, Max, IsBoolean, Matches, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsArray,
+  IsInt,
+  Min,
+  Max,
+  IsBoolean,
+  Matches,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateRouteDto {
-  @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
+  @ApiPropertyOptional({
+    example: 'uuid-of-municipality',
+    description: 'Target municipality (SUPER_ADMIN only)',
+  })
   @IsUUID()
   @IsOptional()
   municipalityId?: string;
@@ -47,14 +61,20 @@ export class CreateRouteDto {
   })
   votingCloseTime: string;
 
-  @ApiPropertyOptional({ example: false, description: 'Route requires elevator-equipped bus' })
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Route requires elevator-equipped bus',
+  })
   @IsBoolean()
   @IsOptional()
   requiresElevator?: boolean;
 }
 
 export class UpdateRouteDto {
-  @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
+  @ApiPropertyOptional({
+    example: 'uuid-of-municipality',
+    description: 'Target municipality (SUPER_ADMIN only)',
+  })
   @IsUUID()
   @IsOptional()
   municipalityId?: string;
@@ -98,7 +118,10 @@ export class UpdateRouteDto {
   @IsOptional()
   active?: boolean;
 
-  @ApiPropertyOptional({ example: false, description: 'Route requires elevator-equipped bus' })
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Route requires elevator-equipped bus',
+  })
   @IsBoolean()
   @IsOptional()
   requiresElevator?: boolean;

@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import {
   ApiTags,
   ApiOperation,
@@ -48,9 +48,23 @@ class SubmitRenewalDto {
 
 class RequestAccessibilityDto {
   @ApiProperty({
-    enum: ['PCD', 'TEA', 'IDOSO', 'GESTANTE', 'LACTANTE', 'MOBILIDADE_REDUZIDA'],
+    enum: [
+      'PCD',
+      'TEA',
+      'IDOSO',
+      'GESTANTE',
+      'LACTANTE',
+      'MOBILIDADE_REDUZIDA',
+    ],
   })
-  @IsEnum(['PCD', 'TEA', 'IDOSO', 'GESTANTE', 'LACTANTE', 'MOBILIDADE_REDUZIDA'])
+  @IsEnum([
+    'PCD',
+    'TEA',
+    'IDOSO',
+    'GESTANTE',
+    'LACTANTE',
+    'MOBILIDADE_REDUZIDA',
+  ])
   @IsNotEmpty()
   reason!: string;
 
@@ -124,7 +138,13 @@ export class UsersController {
   })
   updateMe(
     @CurrentUser() user: JwtPayload,
-    @Body() body: { name?: string; phone?: string; photoUrl?: string; needsWheelchair?: boolean },
+    @Body()
+    body: {
+      name?: string;
+      phone?: string;
+      photoUrl?: string;
+      needsWheelchair?: boolean;
+    },
   ) {
     return this.users.updateMe(user.sub, body);
   }
@@ -164,7 +184,12 @@ export class UsersController {
     @Body() dto: UpdateStatusDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.users.updateStatus(id, dto.status, user.municipalityId, user.role);
+    return this.users.updateStatus(
+      id,
+      dto.status,
+      user.municipalityId,
+      user.role,
+    );
   }
 
   // ── Semester Renewal ─────────────────────────────────
@@ -238,10 +263,7 @@ export class UsersController {
   @Roles('MANAGER', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Soft delete user' })
   @ApiParam({ name: 'id' })
-  softDeleteUser(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  softDeleteUser(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.users.softDelete(id, user.municipalityId, user.role);
   }
 }

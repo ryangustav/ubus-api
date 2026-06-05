@@ -36,6 +36,25 @@ export class ManagementController {
     return this.management.listActivePublic();
   }
 
+  @Get('public/:municipalityId/pickup-points')
+  @ApiOperation({ summary: 'List active pickup points of a municipality (public)' })
+  @ApiParam({ name: 'municipalityId' })
+  listPickupPointsPublic(@Param('municipalityId') municipalityId: string) {
+    return this.management.listPickupPointsPublic(municipalityId);
+  }
+
+  @Post('managers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Register manager in municipality (super-admin only)',
+  })
+  @ApiBody({ type: CreateManagerDto })
+  createManager(@Body() dto: CreateManagerDto) {
+    return this.management.createManager(dto);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SUPER_ADMIN')
@@ -80,18 +99,6 @@ export class ManagementController {
   @ApiBody({ type: UpdateMunicipalityDto })
   update(@Param('id') id: string, @Body() dto: UpdateMunicipalityDto) {
     return this.management.update(id, dto);
-  }
-
-  @Post('managers')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SUPER_ADMIN')
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Register manager in municipality (super-admin only)',
-  })
-  @ApiBody({ type: CreateManagerDto })
-  createManager(@Body() dto: CreateManagerDto) {
-    return this.management.createManager(dto);
   }
 
   @Delete(':id/manager')

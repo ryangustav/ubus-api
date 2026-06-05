@@ -13,6 +13,26 @@ export const registrationStatusEnum = pgEnum('registration_status', [
   'PENDING',
   'APPROVED',
   'REJECTED',
+  'RENEWAL_PENDING',
+  'SUSPENDED',
+  'INACTIVE',
+]);
+
+export const accessibilityReasonEnum = pgEnum('accessibility_reason', [
+  'PCD',
+  'TEA',
+  'IDOSO',
+  'GESTANTE',
+  'LACTANTE',
+  'MOBILIDADE_REDUZIDA',
+]);
+
+export const accessibilityStatusEnum = pgEnum('accessibility_status', [
+  'PENDING_REVIEW',
+  'APPROVED',
+  'REJECTED',
+  'EXPIRED',
+  'REVOKED',
 ]);
 
 export const tripDirectionEnum = pgEnum('trip_direction', ['OUTBOUND', 'INBOUND']);

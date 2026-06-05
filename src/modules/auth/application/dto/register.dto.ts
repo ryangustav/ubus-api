@@ -31,6 +31,10 @@ export const registerSchema = z.object({
   photoUrl: z.string().url('Invalid photo URL').optional(),
   gradeFileUrl: z.string().url('Invalid grade file URL').optional(),
   residenciaFileUrl: z.string().url('Invalid residence proof URL').optional(),
+  accessibilityReason: z
+    .enum(['PCD', 'TEA', 'IDOSO', 'GESTANTE', 'LACTANTE', 'MOBILIDADE_REDUZIDA'])
+    .optional(),
+  accessibilityDocUrl: z.string().url('Invalid accessibility doc URL').optional(),
 });
 
 export class RegisterDto {
@@ -100,4 +104,16 @@ export class RegisterDto {
   @IsUrl()
   @IsOptional()
   residenciaFileUrl?: string;
+
+  @ApiPropertyOptional({
+    enum: ['PCD', 'TEA', 'IDOSO', 'GESTANTE', 'LACTANTE', 'MOBILIDADE_REDUZIDA'],
+  })
+  @IsEnum(['PCD', 'TEA', 'IDOSO', 'GESTANTE', 'LACTANTE', 'MOBILIDADE_REDUZIDA'])
+  @IsOptional()
+  accessibilityReason?: 'PCD' | 'TEA' | 'IDOSO' | 'GESTANTE' | 'LACTANTE' | 'MOBILIDADE_REDUZIDA';
+
+  @ApiPropertyOptional({ example: 'https://storage.com/proof.pdf' })
+  @IsUrl()
+  @IsOptional()
+  accessibilityDocUrl?: string;
 }

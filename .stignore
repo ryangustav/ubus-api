@@ -1,0 +1,11 @@
+drizzle/meta/
+
+# Credenciais sensíveis
+scripts/super-admin-credentials.txt
+.oci_token
+.env.prod
+deploy.sh
+prepare.sh
+
+# Planning
+node_modules/

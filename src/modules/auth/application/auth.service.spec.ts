@@ -23,6 +23,8 @@ describe('AuthService', () => {
   const mockEmailService = {
     sendPasswordResetEmail: jest.fn(),
     getPasswordResetEmailHtml: jest.fn(),
+    sendVerificationCode: jest.fn(),
+    getVerificationEmailHtml: jest.fn(),
   };
   const mockConfigService = {
     get: jest.fn().mockReturnValue('http://localhost'),
@@ -109,12 +111,8 @@ describe('AuthService', () => {
       };
       db.insert.mockReturnValue(insertChain as any);
 
-      // We have to mock login as it's called internally
-      jest.spyOn(service, 'login').mockResolvedValue('loginResult' as any);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed');
-
       const result = await service.register(validDto);
-      expect(result).toBe('loginResult');
+      expect(result.accessToken).toBe('token');
       expect(insertChain.values).toHaveBeenCalled();
     });
   });
@@ -187,7 +185,7 @@ describe('AuthService', () => {
 
       const result = await service.login(loginDto);
       expect(result.accessToken).toBe('token');
-      expect(result.user).toBeDefined();
+      expect((result as any).user).toBeUndefined();
     });
   });
 });

@@ -26,11 +26,41 @@ describe('ReservationsService', () => {
   });
 
   describe('create', () => {
-    it('should throw NotFoundException if trip is not found', async () => {
-      // Mock db.select().from().where() to return empty array
+    it('should throw NotFoundException if user is not found', async () => {
       const mockChain = {
         from: jest.fn().mockReturnThis(),
         where: jest.fn().mockResolvedValue([]),
+      };
+      db.select.mockReturnValue(mockChain as any);
+
+      await expect(
+        service.create({ tripId: 'trip1', userId: 'invalid', seatNumber: 1 }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if user is SUSPENDED', async () => {
+      const mockUser = [{ id: 'user1', registrationStatus: 'SUSPENDED', needsWheelchair: false }];
+      const mockChain = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue(mockUser),
+      };
+      db.select.mockReturnValue(mockChain as any);
+
+      await expect(
+        service.create({ tripId: 'trip1', userId: 'user1', seatNumber: 1 }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw NotFoundException if trip is not found', async () => {
+      const mockUser = [{ id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false }];
+      
+      const mockWhere = jest.fn()
+        .mockResolvedValueOnce(mockUser) // user
+        .mockResolvedValueOnce([]); // trip
+
+      const mockChain = {
+        from: jest.fn().mockReturnThis(),
+        where: mockWhere,
       };
       db.select.mockReturnValue(mockChain as any);
 
@@ -40,10 +70,12 @@ describe('ReservationsService', () => {
     });
 
     it('should throw ConflictException on UNIQUE constraint violation', async () => {
-      // Mock finding the trip first
+      const mockUser = [{ id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false }];
       const mockTrip = [{ id: 'trip1', actualCapacity: 40 }];
 
-      const mockWhere = jest.fn().mockResolvedValue(mockTrip); // use generic mockResolvedValue
+      const mockWhere = jest.fn()
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(mockTrip);
 
       const mockChain = {
         from: jest.fn().mockReturnThis(),
@@ -51,7 +83,6 @@ describe('ReservationsService', () => {
       };
       db.select.mockReturnValue(mockChain as any);
 
-      // Setup the insert to throw Postgres 23505
       const pgError = new Error(
         'duplicate key value violates unique constraint',
       );
@@ -69,13 +100,13 @@ describe('ReservationsService', () => {
     });
 
     it('should fail to create excess reservation if capacity is not full', async () => {
-      // Trip exists
+      const mockUser = [{ id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false }];
       const mockTrip = [{ id: 'trip1', actualCapacity: 40 }];
 
-      // Return trip then return occupied seats (39)
       const mockWhere = jest.fn()
-        .mockResolvedValueOnce(mockTrip) // First call: find trip
-        .mockResolvedValueOnce(Array(39).fill({ seatNumber: 1 })); // Second call: getOccupiedSeats
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(mockTrip)
+        .mockResolvedValueOnce(Array(39).fill({ seatNumber: 1 })); // getOccupiedSeats
 
       const mockChain = {
         from: jest.fn().mockReturnThis(),
@@ -83,16 +114,17 @@ describe('ReservationsService', () => {
       };
       db.select.mockReturnValue(mockChain as any);
 
-      // null seat number indicates excess
       await expect(
         service.create({ tripId: 'trip1', userId: 'user1', seatNumber: null }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should create excess reservation if capacity is full', async () => {
+      const mockUser = [{ id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false }];
       const mockTrip = [{ id: 'trip1', actualCapacity: 40 }];
 
       const mockWhere = jest.fn()
+        .mockResolvedValueOnce(mockUser)
         .mockResolvedValueOnce(mockTrip)
         .mockResolvedValueOnce(Array(40).fill({ seatNumber: 1 }));
 

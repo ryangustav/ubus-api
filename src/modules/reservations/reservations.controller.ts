@@ -68,7 +68,7 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Occupied seats (for map)' })
   @ApiParam({ name: 'tripId', example: '20260228-20120-M' })
   getOccupiedSeats(@Param('tripId') tripId: string) {
-    return this.reservations.getOccupiedSeats(tripId);
+    return this.reservations.getOccupiedSeatsDetailed(tripId);
   }
 
   @Get(':id')

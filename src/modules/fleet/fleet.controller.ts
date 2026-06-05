@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -17,6 +18,7 @@ import {
 import { FleetService } from './application/fleet.service';
 import { CreateRouteDto, UpdateRouteDto } from './dto/route.dto';
 import { CreateBusDto, UpdateBusDto } from './dto/bus.dto';
+import { CreatePointDto, UpdatePointDto } from './dto/point.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/guards/roles.decorator';
@@ -31,23 +33,11 @@ import type { JwtPayload } from '../auth/infrastructure/strategies/jwt.strategy'
 export class FleetController {
   constructor(private fleet: FleetService) {}
 
+  // ── Routes ───────────────────────────────────────────
   @Get('routes')
   @ApiOperation({ summary: 'List routes of municipality' })
   listRoutes(@CurrentUser() user: JwtPayload) {
     return this.fleet.listRoutes(user.municipalityId);
-  }
-
-  @Get('routes/:id/points')
-  @ApiOperation({ summary: 'List pick-up points of a route' })
-  @ApiParam({ name: 'id', description: 'Route ID' })
-  listPoints(@Param('id') id: string) {
-    return this.fleet.listPointsByRoute(id);
-  }
-
-  @Get('buses')
-  @ApiOperation({ summary: 'List buses of municipality' })
-  listBuses(@CurrentUser() user: JwtPayload) {
-    return this.fleet.listBuses(user.municipalityId);
   }
 
   @Post('routes')
@@ -79,6 +69,70 @@ export class FleetController {
         ? dto.municipalityId
         : user.municipalityId;
     return this.fleet.updateRoute(municipalityId, id, dto);
+  }
+
+  // ── Points ───────────────────────────────────────────
+  @Get('routes/:id/points')
+  @ApiOperation({ summary: 'List pick-up points of a route' })
+  @ApiParam({ name: 'id', description: 'Route ID' })
+  listPoints(@Param('id') id: string) {
+    return this.fleet.listPointsByRoute(id);
+  }
+
+  @Post('routes/:id/points')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @ApiOperation({ summary: 'Create pick-up point on a route' })
+  @ApiParam({ name: 'id', description: 'Route ID' })
+  @ApiBody({ type: CreatePointDto })
+  createPoint(
+    @Param('id') routeId: string,
+    @Body() dto: CreatePointDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.fleet.createPoint(routeId, dto, user.municipalityId);
+  }
+
+  @Patch('points/:id')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @ApiOperation({ summary: 'Update pick-up point' })
+  @ApiParam({ name: 'id', description: 'Point ID' })
+  @ApiBody({ type: UpdatePointDto })
+  updatePoint(
+    @Param('id') id: string,
+    @Body() dto: UpdatePointDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.fleet.updatePoint(id, dto, user.municipalityId);
+  }
+
+  @Delete('points/:id')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @ApiOperation({ summary: 'Delete pick-up point' })
+  @ApiParam({ name: 'id', description: 'Point ID' })
+  deletePoint(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.fleet.deletePoint(id, user.municipalityId);
+  }
+
+  // ── Public Pickup Points ─────────────────────────────
+  @Get('pickup-points')
+  @ApiOperation({
+    summary: 'List all pickup points of the municipality (for map)',
+  })
+  listPickupPoints(@CurrentUser() user: JwtPayload) {
+    return this.fleet.listPickupPoints(user.municipalityId);
+  }
+
+  // ── Buses ────────────────────────────────────────────
+  @Get('buses')
+  @ApiOperation({ summary: 'List buses of municipality' })
+  listBuses(@CurrentUser() user: JwtPayload) {
+    return this.fleet.listBuses(user.municipalityId);
   }
 
   @Get('buses/mine')
@@ -122,5 +176,12 @@ export class FleetController {
         ? dto.municipalityId
         : user.municipalityId;
     return this.fleet.updateBus(municipalityId, id, dto);
+  }
+
+  // ── Drivers ──────────────────────────────────────────
+  @Get('drivers')
+  @ApiOperation({ summary: 'List drivers of municipality' })
+  listDrivers(@CurrentUser() user: JwtPayload) {
+    return this.fleet.listDrivers(user.municipalityId);
   }
 }

@@ -25,12 +25,46 @@ export class ReservationsService {
     seatNumber?: number | null;
     isRideShare?: boolean;
   }) {
+    // 1. Fetch user to validate status and wheelchair requirements
+    const [user] = await this.db
+      .select({
+        id: schema.users.id,
+        registrationStatus: schema.users.registrationStatus,
+        needsWheelchair: schema.users.needsWheelchair,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, dto.userId));
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (
+      user.registrationStatus === 'SUSPENDED' ||
+      user.registrationStatus === 'INACTIVE'
+    ) {
+      throw new ForbiddenException('ACCOUNT_SUSPENDED');
+    }
+
+    // 2. Fetch Trip
     const [trip] = await this.db
       .select()
       .from(schema.trips)
       .where(eq(schema.trips.id, dto.tripId));
     if (!trip) {
       throw new NotFoundException(`Trip "${dto.tripId}" not found`);
+    }
+
+    // 3. Wheelchair check
+    if (user.needsWheelchair) {
+      const [bus] = await this.db
+        .select({ hasElevator: schema.buses.hasElevator })
+        .from(schema.buses)
+        .where(eq(schema.buses.id, trip.busId));
+
+      if (!bus || !bus.hasElevator) {
+        throw new BadRequestException('BUS_NO_ELEVATOR');
+      }
     }
 
     const isExcess = dto.seatNumber == null;
@@ -134,6 +168,33 @@ export class ReservationsService {
     return rows
       .map((r) => r.seatNumber)
       .filter((n): n is number => n != null);
+  }
+
+  async getOccupiedSeatsDetailed(tripId: string) {
+    // 1. Fetch trip and its bus to get preferentialSeats
+    const [tripWithBus] = await this.db
+      .select({
+        trip: schema.trips,
+        bus: schema.buses,
+      })
+      .from(schema.trips)
+      .innerJoin(schema.buses, eq(schema.trips.busId, schema.buses.id))
+      .where(eq(schema.trips.id, tripId));
+
+    const preferentialSeats = tripWithBus?.bus?.preferentialSeats ?? [];
+
+    // 2. Fetch occupied seats
+    const occupiedSeats = await this.getOccupiedSeats(tripId);
+
+    // 3. Find preferential occupied seats (seats in preferential list)
+    const preferentialOccupiedSeats = occupiedSeats.filter((seat) =>
+      preferentialSeats.includes(seat),
+    );
+
+    return {
+      occupiedSeats,
+      preferentialOccupiedSeats,
+    };
   }
 
   /**

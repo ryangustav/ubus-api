@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -12,11 +13,13 @@ import {
   ApiOperation,
   ApiBody,
   ApiParam,
+  ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TripsService } from './application/trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
+import { ScheduleTripsDto } from './dto/schedule-trips.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/guards/roles.decorator';
@@ -34,6 +37,38 @@ export class TripsController {
     return this.trips.listOpenTrips();
   }
 
+  @Post('schedule')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Batch schedule trips for a route (manager only)' })
+  @ApiBody({ type: ScheduleTripsDto })
+  scheduleTrips(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ScheduleTripsDto,
+  ) {
+    const municipalityId =
+      user.role === 'SUPER_ADMIN' && dto.municipalityId
+        ? dto.municipalityId
+        : user.municipalityId;
+    return this.trips.scheduleTrips(dto, municipalityId);
+  }
+
+  @Get('route/:routeId/calendar')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get scheduled trips calendar for a route' })
+  @ApiParam({ name: 'routeId' })
+  @ApiQuery({ name: 'year', required: false, type: Number })
+  @ApiQuery({ name: 'month', required: false, type: Number })
+  getRouteCalendar(
+    @Param('routeId') routeId: string,
+    @Query('year') year?: number,
+    @Query('month') month?: number,
+  ) {
+    return this.trips.getRouteCalendar(routeId, year, month);
+  }
+
   @Get(':tripId')
   @ApiOperation({ summary: 'Get trip by Smart Key' })
   @ApiParam({ name: 'tripId', example: '20260228-20120-M' })
@@ -41,6 +76,12 @@ export class TripsController {
     return this.trips.getTrip(tripId);
   }
 
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a trip (manager only)' })
+  @ApiBody({ type: CreateTripDto })
   createTrip(@CurrentUser() user: JwtPayload, @Body() dto: CreateTripDto) {
     const municipalityId =
       user.role === 'SUPER_ADMIN' && dto.municipalityId

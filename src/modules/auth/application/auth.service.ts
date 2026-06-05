@@ -115,6 +115,9 @@ export class AuthService {
         scheduleUrl: parsed.data.gradeFileUrl ?? null,
         residenceProofUrl: parsed.data.residenciaFileUrl ?? null,
         needsWheelchair: parsed.data.needsWheelchair ?? false,
+        accessibilityReason: (parsed.data.accessibilityReason as any) ?? null,
+        accessibilityDocUrl: parsed.data.accessibilityDocUrl ?? null,
+        accessibilityStatus: parsed.data.accessibilityReason ? 'PENDING_REVIEW' : null,
         emailVerificationCode: verificationCode,
       })
       .returning();
@@ -126,16 +129,32 @@ export class AuthService {
         .where(eq(schema.municipalities.id, municipalityId));
     }
 
+    if (parsed.data.needsWheelchair && parsed.data.defaultRouteId) {
+      await this.db
+        .update(schema.routes)
+        .set({ requiresElevator: true })
+        .where(eq(schema.routes.id, parsed.data.defaultRouteId));
+    }
+
     await this.emailService.sendVerificationCode(
       user.email,
       user.name,
       verificationCode,
     );
 
-    return this.login({
+    const payload: JwtPayload = {
+      sub: user.id,
       email: user.email,
-      password: parsed.data.password,
+      role: user.role ?? 'STUDENT',
+      municipalityId: user.municipalityId,
+      tokenVersion: user.tokenVersion,
+    };
+
+    const accessToken = this.jwt.sign(payload, {
+      expiresIn: '7d',
     });
+
+    return { accessToken };
   }
 
   async login(dto: LoginDto) {
@@ -183,26 +202,14 @@ export class AuthService {
       email: u.email,
       role: u.role ?? 'STUDENT',
       municipalityId: u.municipalityId,
+      tokenVersion: u.tokenVersion,
     };
 
     const accessToken = this.jwt.sign(payload, {
       expiresIn: '7d',
     });
 
-    return {
-      accessToken,
-      user: {
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-        cpf: u.cpf,
-        phone: u.phone,
-        municipalityId: u.municipalityId,
-        priorityLevel: u.priorityLevel,
-        defaultRouteId: u.defaultRouteId,
-      },
-    };
+    return { accessToken };
   }
 
   async sendPasswordResetEmail(userId: string): Promise<{ message: string }> {

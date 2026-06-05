@@ -204,4 +204,26 @@ export class ManagementService {
     if (!updated) throw new NotFoundException('Municipality not found');
     return updated;
   }
+
+  async listPickupPointsPublic(municipalityId: string) {
+    return this.db
+      .select({
+        id: schema.points.id,
+        name: schema.points.name,
+        order: schema.points.order,
+        lat: schema.points.lat,
+        lng: schema.points.lng,
+        address: schema.points.address,
+        routeName: schema.routes.name,
+      })
+      .from(schema.points)
+      .innerJoin(schema.routes, eq(schema.points.routeId, schema.routes.id))
+      .where(
+        and(
+          eq(schema.routes.municipalityId, municipalityId),
+          eq(schema.routes.active, true),
+        ),
+      )
+      .orderBy(schema.routes.name, schema.points.order);
+  }
 }

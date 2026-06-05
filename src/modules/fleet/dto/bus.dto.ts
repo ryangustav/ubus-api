@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min, IsBoolean, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, Min, IsBoolean, IsUUID, IsArray } from 'class-validator';
 
 export class CreateBusDto {
   @ApiPropertyOptional({ example: 'uuid-of-municipality', description: 'Target municipality (SUPER_ADMIN only)' })
@@ -34,6 +34,17 @@ export class CreateBusDto {
   @IsBoolean()
   @IsOptional()
   hasAirConditioning?: boolean;
+
+  @ApiPropertyOptional({ example: true, description: 'Has elevator for accessibility' })
+  @IsBoolean()
+  @IsOptional()
+  hasElevator?: boolean;
+
+  @ApiPropertyOptional({ example: [1, 2, 3, 4], description: 'Preferential seat numbers' })
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  preferentialSeats?: number[];
 }
 
 export class UpdateBusDto {
@@ -67,6 +78,17 @@ export class UpdateBusDto {
   @IsBoolean()
   @IsOptional()
   hasAirConditioning?: boolean;
+
+  @ApiPropertyOptional({ example: true, description: 'Has elevator for accessibility' })
+  @IsBoolean()
+  @IsOptional()
+  hasElevator?: boolean;
+
+  @ApiPropertyOptional({ example: [1, 2, 3, 4], description: 'Preferential seat numbers' })
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  preferentialSeats?: number[];
 
   @ApiPropertyOptional({
     example: true,

@@ -4,3 +4,4 @@ export * from './fleet.schema';
 export * from './user.schema';
 export * from './trip.schema';
 export * from './reservation.schema';
+export * from './notification.schema';

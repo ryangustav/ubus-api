@@ -7,6 +7,7 @@ import {
   timestamp,
   integer,
   unique,
+  doublePrecision,
 } from 'drizzle-orm/pg-core';
 import { municipalities } from './municipality.schema';
 import { users } from './user.schema';
@@ -33,6 +34,7 @@ export const routes = pgTable(
       .notNull()
       .default('07:30'),
     active: boolean('is_active').default(true),
+    requiresElevator: boolean('requires_elevator').default(false).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
@@ -60,6 +62,8 @@ export const buses = pgTable(
     hasAirConditioning: boolean('has_air_conditioning').default(false),
     /** Active for capacity calculation */
     active: boolean('is_active').default(true),
+    hasElevator: boolean('has_elevator').default(false).notNull(),
+    preferentialSeats: integer('preferential_seats').array(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
@@ -80,6 +84,9 @@ export const points = pgTable(
       .references(() => routes.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 150 }).notNull(),
     order: integer('order').notNull().default(0),
+    lat: doublePrecision('lat'),
+    lng: doublePrecision('lng'),
+    address: text('address'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [unique('uq_point_name_route').on(table.routeId, table.name)],

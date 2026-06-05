@@ -10,7 +10,6 @@ import { DRIZZLE } from '../../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { ScheduleTripsDto } from '../dto/schedule-trips.dto';
 
 const TRIP_LOCATION_PREFIX = 'trip:location:';
 const TRIP_ALERT_PREFIX = 'trip:alert:';
@@ -37,19 +36,7 @@ export class TripsService {
       votingClose: string;
       leaderIds?: string[];
     },
-    municipalityId: string,
-    role?: string,
   ) {
-    const [route] = await this.db
-      .select({ requiresElevator: schema.routes.requiresElevator })
-      .from(schema.routes)
-      .where(eq(schema.routes.id, dto.routeId));
-
-    const [bus] = await this.db
-      .select({ hasElevator: schema.buses.hasElevator })
-      .from(schema.buses)
-      .where(eq(schema.buses.id, dto.busId));
-
     const [trip] = await this.db
       .insert(schema.trips)
       .values({
@@ -66,12 +53,7 @@ export class TripsService {
         leaderIds: dto.leaderIds ?? [],
       })
       .returning();
-
-    const hasWarning = route?.requiresElevator && (!bus || !bus.hasElevator);
-    return {
-      ...trip,
-      warning: hasWarning ? 'BUS_NO_ELEVATOR' : undefined,
-    };
+    return trip;
   }
 
   async getTrip(tripId: string) {
@@ -123,8 +105,6 @@ export class TripsService {
       leaderIds: string[];
       status: string;
     }>,
-    municipalityId: string,
-    role?: string,
   ) {
     const updates: Record<string, unknown> = {};
     if (dto.tripDate !== undefined) updates.tripDate = dto.tripDate;
@@ -148,135 +128,7 @@ export class TripsService {
       .where(eq(schema.trips.id, tripId))
       .returning();
     if (!trip) throw new NotFoundException('Trip not found');
-
-    const [route] = await this.db
-      .select({ requiresElevator: schema.routes.requiresElevator })
-      .from(schema.routes)
-      .where(eq(schema.routes.id, trip.routeId));
-
-    const [bus] = await this.db
-      .select({ hasElevator: schema.buses.hasElevator })
-      .from(schema.buses)
-      .where(eq(schema.buses.id, trip.busId));
-
-    const hasWarning = route?.requiresElevator && (!bus || !bus.hasElevator);
-
-    return {
-      ...trip,
-      warning: hasWarning ? 'BUS_NO_ELEVATOR' : undefined,
-    };
-  }
-
-  async scheduleTrips(dto: ScheduleTripsDto, municipalityId: string) {
-    // 1. Fetch route
-    const [route] = await this.db
-      .select()
-      .from(schema.routes)
-      .where(
-        and(
-          eq(schema.routes.id, dto.routeId),
-          eq(schema.routes.municipalityId, municipalityId),
-        ),
-      );
-    if (!route) throw new NotFoundException('Route not found');
-
-    // 2. Fetch bus
-    const [bus] = await this.db
-      .select()
-      .from(schema.buses)
-      .where(
-        and(
-          eq(schema.buses.id, dto.busId),
-          eq(schema.buses.municipalityId, municipalityId),
-        ),
-      );
-    if (!bus) throw new NotFoundException('Bus not found');
-
-    const start = new Date(dto.startDate + 'T00:00:00Z');
-    const end = new Date(dto.endDate + 'T00:00:00Z');
-
-    const created: any[] = [];
-    const warnings: any[] = [];
-
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dayOfWeek = d.getUTCDay();
-      if (route.weekDays.includes(dayOfWeek)) {
-        const year = d.getUTCFullYear();
-        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(d.getUTCDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-        const smartDate = `${year}${month}${day}`;
-
-        const shiftChar = dto.shift.toUpperCase().startsWith('M')
-          ? 'M'
-          : dto.shift.toUpperCase().startsWith('A') ||
-            dto.shift.toUpperCase().startsWith('T')
-          ? 'T'
-          : 'N';
-
-        const tripId = `${smartDate}-${bus.identificationNumber}-${shiftChar}`;
-
-        const votingOpenAt = new Date(
-          `${dateStr}T${route.votingOpenTime}:00.000Z`,
-        );
-        const votingCloseAt = new Date(
-          `${dateStr}T${route.votingCloseTime}:00.000Z`,
-        );
-
-        // Check if trip already exists
-        const [existing] = await this.db
-          .select()
-          .from(schema.trips)
-          .where(eq(schema.trips.id, tripId));
-
-        if (!existing) {
-          const [trip] = await this.db
-            .insert(schema.trips)
-            .values({
-              id: tripId,
-              tripDate: dateStr,
-              shift: dto.shift,
-              direction: dto.direction,
-              routeId: dto.routeId,
-              busId: dto.busId,
-              driverId: dto.driverId ?? null,
-              actualCapacity: dto.realCapacity,
-              votingOpenAt,
-              votingCloseAt,
-              status: 'OPEN_FOR_RESERVATION',
-            })
-            .returning();
-
-          created.push(trip);
-
-          if (route.requiresElevator && !bus.hasElevator) {
-            warnings.push({ tripId, warning: 'BUS_NO_ELEVATOR' });
-          }
-        }
-      }
-    }
-
-    return { scheduledCount: created.length, trips: created, warnings };
-  }
-
-  async getRouteCalendar(routeId: string, year?: number, month?: number) {
-    const y = year ?? new Date().getUTCFullYear();
-    const m = month ?? new Date().getUTCMonth() + 1;
-
-    const startStr = `${y}-${String(m).padStart(2, '0')}-01`;
-    const lastDay = new Date(y, m, 0).getDate();
-    const endStr = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-
-    return this.db
-      .select()
-      .from(schema.trips)
-      .where(
-        and(
-          eq(schema.trips.routeId, routeId),
-          gte(schema.trips.tripDate, startStr),
-          lte(schema.trips.tripDate, endStr),
-        ),
-      );
+    return trip;
   }
 
   async triggerConfirmationAlert(

@@ -46,6 +46,11 @@ export class CreateRouteDto {
     message: 'Must be a valid time in HH:mm format',
   })
   votingCloseTime: string;
+
+  @ApiPropertyOptional({ example: false, description: 'Route requires elevator-equipped bus' })
+  @IsBoolean()
+  @IsOptional()
+  requiresElevator?: boolean;
 }
 
 export class UpdateRouteDto {
@@ -92,4 +97,9 @@ export class UpdateRouteDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Route requires elevator-equipped bus' })
+  @IsBoolean()
+  @IsOptional()
+  requiresElevator?: boolean;
 }

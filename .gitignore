@@ -45,3 +45,6 @@ deploy.sh
 prepare.sh
 
 # Planning
+
+./ubus-frontend
+./ubus-ui-temp

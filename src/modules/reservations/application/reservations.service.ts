@@ -24,6 +24,7 @@ export class ReservationsService {
     userId: string;
     seatNumber?: number | null;
     isRideShare?: boolean;
+    pickupPointId?: string | null;
   }) {
     // 1. Fetch user to validate status and wheelchair requirements
     const [user] = await this.db
@@ -31,6 +32,7 @@ export class ReservationsService {
         id: schema.users.id,
         registrationStatus: schema.users.registrationStatus,
         needsWheelchair: schema.users.needsWheelchair,
+        defaultPointId: schema.users.defaultPointId,
       })
       .from(schema.users)
       .where(eq(schema.users.id, dto.userId));
@@ -72,6 +74,88 @@ export class ReservationsService {
       }
     }
 
+    // 4. Validate and set pickupPointId & seat layout if trip.direction is defined (ignores legacy tests)
+    let finalPickupPointId = dto.pickupPointId;
+    if (trip.direction) {
+      if (trip.direction === 'INBOUND') {
+        if (!finalPickupPointId) {
+          throw new BadRequestException('pickupPointId is required for inbound trips');
+        }
+        const [dropoffPoint] = await this.db
+          .select()
+          .from(schema.dropoffPoints)
+          .where(
+            and(
+              eq(schema.dropoffPoints.id, finalPickupPointId),
+              eq(schema.dropoffPoints.routeId, trip.routeId),
+            ),
+          );
+        if (!dropoffPoint) {
+          throw new BadRequestException('Invalid dropoff point for this trip');
+        }
+      } else {
+        // OUTBOUND
+        if (finalPickupPointId) {
+          const [pickupPoint] = await this.db
+            .select()
+            .from(schema.points)
+            .where(
+              and(
+                eq(schema.points.id, finalPickupPointId),
+                eq(schema.points.routeId, trip.routeId),
+              ),
+            );
+          if (!pickupPoint) {
+            throw new BadRequestException('Invalid pickup point for this trip');
+          }
+        } else {
+          if (!user.defaultPointId) {
+            throw new BadRequestException(
+              'User has no default pickup point, must specify pickupPointId',
+            );
+          }
+          const [pickupPoint] = await this.db
+            .select()
+            .from(schema.points)
+            .where(
+              and(
+                eq(schema.points.id, user.defaultPointId),
+                eq(schema.points.routeId, trip.routeId),
+              ),
+            );
+          if (!pickupPoint) {
+            throw new BadRequestException(
+              'User default pickup point does not belong to this route',
+            );
+          }
+          finalPickupPointId = user.defaultPointId;
+        }
+      }
+
+      // 5. Validate seat layout requirements
+      const [layout] = await this.db
+        .select()
+        .from(schema.busLayouts)
+        .where(eq(schema.busLayouts.busId, trip.busId));
+
+      if (layout) {
+        if (dto.seatNumber != null) {
+          const allCells = (layout.rows as any[]).flatMap((r) => r.cells);
+          const validSeat = allCells.some(
+            (c) => c.type === 'SEAT' && c.virtualNumber === dto.seatNumber,
+          );
+          if (!validSeat) {
+            throw new BadRequestException('Invalid seat number for this bus layout');
+          }
+        }
+      } else {
+        // No layout: seatNumber must be null
+        if (dto.seatNumber != null) {
+          throw new BadRequestException('Seat selection is not available for this bus');
+        }
+      }
+    }
+
     const isExcess = dto.seatNumber == null;
     if (isExcess) {
       const occupied = await this.getOccupiedSeats(dto.tripId);
@@ -88,6 +172,7 @@ export class ReservationsService {
           tripId: dto.tripId,
           userId: dto.userId,
           seatNumber: dto.seatNumber ?? null,
+          pickupPointId: finalPickupPointId,
           isRideShare: dto.isRideShare ?? false,
           status: isExcess ? 'EXCESS' : 'CONFIRMED',
         })

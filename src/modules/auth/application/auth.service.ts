@@ -299,4 +299,84 @@ export class AuthService {
 
     return { message: 'Password reset successfully' };
   }
+
+  async sendVerificationCode(dto: {
+    identifier: string;
+    channel: 'EMAIL' | 'WHATSAPP';
+    context: 'CHANGE_EMAIL' | 'RESET_PASSWORD' | 'REGISTER';
+  }): Promise<{ message: string }> {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const redisKey = `verification-code:${dto.context}:${dto.channel}:${dto.identifier}`;
+
+    // Save code in Redis for 10 minutes
+    await this.redis.setex(redisKey, 600, code);
+
+    if (dto.channel === 'EMAIL') {
+      // Find user to get their name, fallback to "Usuário"
+      const [user] = await this.db
+        .select({ name: schema.users.name })
+        .from(schema.users)
+        .where(eq(schema.users.email, dto.identifier));
+
+      const userName = user?.name || 'Usuário';
+      await this.emailService.sendVerificationCode(dto.identifier, userName, code);
+    } else {
+      // WHATSAPP channel: log to console for simulator/dev preview
+      console.log(`[WhatsAppService] Verification code for ${dto.identifier} via WHATSAPP: ${code}`);
+    }
+
+    return { message: 'Código enviado com sucesso!' };
+  }
+
+  async verifyCode(dto: {
+    identifier: string;
+    code: string;
+    channel: 'EMAIL' | 'WHATSAPP';
+    context: 'CHANGE_EMAIL' | 'RESET_PASSWORD' | 'REGISTER';
+  }): Promise<{ verified: boolean; token?: string; message?: string }> {
+    const redisKey = `verification-code:${dto.context}:${dto.channel}:${dto.identifier}`;
+    const storedCode = await this.redis.get(redisKey);
+
+    if (!storedCode || storedCode !== dto.code) {
+      return {
+        verified: false,
+        message: 'Código inválido ou expirado',
+      };
+    }
+
+    // Delete the verified code from Redis
+    await this.redis.del(redisKey);
+
+    if (dto.context === 'RESET_PASSWORD') {
+      // Find the user to associate with the reset token
+      const [user] = await this.db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(
+          dto.channel === 'EMAIL'
+            ? eq(schema.users.email, dto.identifier)
+            : eq(schema.users.phone, dto.identifier),
+        );
+
+      if (!user) {
+        return {
+          verified: false,
+          message: 'Usuário não encontrado para o identificador fornecido',
+        };
+      }
+
+      const token = randomBytes(32).toString('hex');
+      const resetRedisKey = `${PASSWORD_RESET_PREFIX}${token}`;
+      await this.redis.setex(resetRedisKey, PASSWORD_RESET_TTL, user.id);
+
+      return {
+        verified: true,
+        token,
+      };
+    }
+
+    return {
+      verified: true,
+    };
+  }
 }

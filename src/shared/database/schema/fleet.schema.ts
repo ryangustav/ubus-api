@@ -8,6 +8,7 @@ import {
   integer,
   unique,
   doublePrecision,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { municipalities } from './municipality.schema';
 import { users } from './user.schema';
@@ -93,3 +94,38 @@ export const points = pgTable(
   },
   (table) => [unique('uq_point_name_route').on(table.routeId, table.name)],
 );
+
+export const busLayouts = pgTable(
+  'bus_layouts',
+  {
+    busId: uuid('bus_id')
+      .primaryKey()
+      .references(() => buses.id, { onDelete: 'cascade' }),
+    numberingMode: varchar('numbering_mode', { length: 20 }).notNull(),
+    numerationSide: varchar('numeration_side', { length: 20 }).notNull(),
+    dpmSeatVirtualNumber: integer('dpm_seat_virtual_number'),
+    preferentialSeats: integer('preferential_seats').array().notNull().default([]),
+    rows: jsonb('rows').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+);
+
+export const dropoffPoints = pgTable(
+  'dropoff_points',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    routeId: uuid('route_id')
+      .notNull()
+      .references(() => routes.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 150 }).notNull(),
+    address: text('address'),
+    lat: doublePrecision('lat'),
+    lng: doublePrecision('lng'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    unique('uq_dropoff_point_name_route').on(table.routeId, table.name),
+  ],
+);
+

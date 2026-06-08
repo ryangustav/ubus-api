@@ -64,6 +64,20 @@
       "when": 1780677818114,
       "tag": "0008_past_skrulls",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780844554187,
+      "tag": "0009_slim_swordsman",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780886516463,
+      "tag": "0010_stormy_sunfire",
+      "breakpoints": true
     }
   ]
 }

@@ -22,6 +22,7 @@ import {
   PasswordRedefinitionDto,
   SendPasswordResetEmailDto,
 } from './application/dto/password-reset.dto';
+import { SendVerificationCodeDto, VerifyCodeDto } from './application/dto/verification.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { JwtPayload } from './infrastructure/strategies/jwt.strategy';
@@ -120,5 +121,21 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   resetPassword(@Body() dto: PasswordRedefinitionDto) {
     return this.auth.resetPassword(dto);
+  }
+
+  @Post('send-verification-code')
+  @ApiOperation({ summary: 'Request temporary 6-digit verification code' })
+  @ApiBody({ type: SendVerificationCodeDto })
+  @ApiResponse({ status: 200, description: 'Code sent successfully' })
+  sendVerificationCode(@Body() dto: SendVerificationCodeDto) {
+    return this.auth.sendVerificationCode(dto);
+  }
+
+  @Post('verify')
+  @ApiOperation({ summary: 'Verify 6-digit code for a given context' })
+  @ApiBody({ type: VerifyCodeDto })
+  @ApiResponse({ status: 200, description: 'Verification results' })
+  verifyCode(@Body() dto: VerifyCodeDto) {
+    return this.auth.verifyCode(dto);
   }
 }

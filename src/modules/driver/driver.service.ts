@@ -104,10 +104,11 @@ export class DriverService {
       };
     }
 
-    // 3. Count student reservations for each route pickup point
+    // 3. Count student reservations for each route point
     const tripReservations = await this.db
       .select({
         defaultPointId: schema.users.defaultPointId,
+        pickupPointId: schema.reservations.pickupPointId,
       })
       .from(schema.reservations)
       .innerJoin(schema.users, eq(schema.reservations.userId, schema.users.id))
@@ -122,28 +123,55 @@ export class DriverService {
         ),
       );
 
-    const routePoints = await this.db
-      .select()
-      .from(schema.points)
-      .where(eq(schema.points.routeId, currentTrip.routeId))
-      .orderBy(schema.points.order);
+    if (currentTrip.direction === 'INBOUND') {
+      const routePoints = await this.db
+        .select()
+        .from(schema.dropoffPoints)
+        .where(eq(schema.dropoffPoints.routeId, currentTrip.routeId))
+        .orderBy(schema.dropoffPoints.name);
 
-    const pointsList = routePoints.map((p) => {
-      const count = tripReservations.filter(
-        (r) => r.defaultPointId === p.id,
-      ).length;
+      const pointsList = routePoints.map((p) => {
+        const count = tripReservations.filter(
+          (r) => r.pickupPointId === p.id,
+        ).length;
+        return {
+          pointId: p.id,
+          pointName: p.name,
+          studentsCount: count,
+        };
+      });
+
       return {
-        pointId: p.id,
-        pointName: p.name,
-        studentsCount: count,
+        phase: currentTrip.status,
+        tripId: currentTrip.id,
+        points: pointsList,
       };
-    });
+    } else {
+      const routePoints = await this.db
+        .select()
+        .from(schema.points)
+        .where(eq(schema.points.routeId, currentTrip.routeId))
+        .orderBy(schema.points.order);
 
-    return {
-      phase: currentTrip.status,
-      tripId: currentTrip.id,
-      points: pointsList,
-    };
+      const pointsList = routePoints.map((p) => {
+        const count = tripReservations.filter(
+          (r) =>
+            r.pickupPointId === p.id ||
+            (!r.pickupPointId && r.defaultPointId === p.id),
+        ).length;
+        return {
+          pointId: p.id,
+          pointName: p.name,
+          studentsCount: count,
+        };
+      });
+
+      return {
+        phase: currentTrip.status,
+        tripId: currentTrip.id,
+        points: pointsList,
+      };
+    }
   }
 
   async departTrip(tripId: string, driverId: string) {

@@ -177,6 +177,73 @@ describe('ReservationsService', () => {
         }),
       );
     });
+
+    it('should validate pickupPointId for INBOUND trips', async () => {
+      const mockUser = [
+        { id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false, defaultPointId: 'defaultPoint1' },
+      ];
+      const mockTrip = [{ id: 'trip1', actualCapacity: 40, direction: 'INBOUND', routeId: 'route1' }];
+
+      const mockWhere = jest
+        .fn()
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(mockTrip)
+        .mockResolvedValueOnce([]); // dropoffPoints (not found)
+
+      const mockChain = {
+        from: jest.fn().mockReturnThis(),
+        where: mockWhere,
+      };
+      db.select.mockReturnValue(mockChain as any);
+
+      await expect(
+        service.create({
+          tripId: 'trip1',
+          userId: 'user1',
+          seatNumber: null,
+          pickupPointId: 'invalidDropoffPoint',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should validate seatNumber against bus layout if exists', async () => {
+      const mockUser = [
+        { id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false, defaultPointId: 'point1' },
+      ];
+      const mockTrip = [{ id: 'trip1', actualCapacity: 40, direction: 'OUTBOUND', routeId: 'route1', busId: 'bus1' }];
+      const mockPickupPoint = [{ id: 'point1', routeId: 'route1' }];
+      const mockLayout = [{
+        busId: 'bus1',
+        rows: [
+          {
+            cells: [
+              { type: 'SEAT', virtualNumber: 1, isDpm: false },
+            ]
+          }
+        ]
+      }];
+
+      const mockWhere = jest
+        .fn()
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(mockTrip)
+        .mockResolvedValueOnce(mockPickupPoint) // points validation
+        .mockResolvedValueOnce(mockLayout); // busLayouts
+
+      const mockChain = {
+        from: jest.fn().mockReturnThis(),
+        where: mockWhere,
+      };
+      db.select.mockReturnValue(mockChain as any);
+
+      await expect(
+        service.create({
+          tripId: 'trip1',
+          userId: 'user1',
+          seatNumber: 99, // seat 99 not in layout
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('update', () => {

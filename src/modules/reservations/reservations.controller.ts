@@ -39,6 +39,7 @@ export class ReservationsController {
       userId: req.user.sub,
       seatNumber: dto.seatNumber ?? undefined,
       isRideShare: dto.isRideShare,
+      pickupPointId: dto.pickupPointId,
     });
   }
 

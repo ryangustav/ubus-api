@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -17,8 +18,9 @@ import {
 } from '@nestjs/swagger';
 import { FleetService } from './application/fleet.service';
 import { CreateRouteDto, UpdateRouteDto } from './dto/route.dto';
-import { CreateBusDto, UpdateBusDto } from './dto/bus.dto';
+import { CreateBusDto, UpdateBusDto, BusLayoutDto } from './dto/bus.dto';
 import { CreatePointDto, UpdatePointDto } from './dto/point.dto';
+import { CreateDropoffPointDto, UpdateDropoffPointDto } from './dto/dropoff-point.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/guards/roles.decorator';
@@ -116,6 +118,51 @@ export class FleetController {
     return this.fleet.deletePoint(id, user.municipalityId);
   }
 
+  // ── Dropoff Points ───────────────────────────────────
+  @Get('routes/:routeId/dropoff-points')
+  @ApiOperation({ summary: 'List drop-off points of a route' })
+  @ApiParam({ name: 'routeId', description: 'Route ID' })
+  listDropoffPoints(@Param('routeId') routeId: string) {
+    return this.fleet.listDropoffPointsByRoute(routeId);
+  }
+
+  @Post('routes/:routeId/dropoff-points')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @ApiOperation({ summary: 'Create drop-off point on a route' })
+  @ApiParam({ name: 'routeId', description: 'Route ID' })
+  @ApiBody({ type: CreateDropoffPointDto })
+  createDropoffPoint(
+    @Param('routeId') routeId: string,
+    @Body() dto: CreateDropoffPointDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.fleet.createDropoffPoint(routeId, dto, user.municipalityId);
+  }
+
+  @Patch('dropoff-points/:pointId')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @ApiOperation({ summary: 'Update drop-off point' })
+  @ApiParam({ name: 'pointId', description: 'Point ID' })
+  @ApiBody({ type: UpdateDropoffPointDto })
+  updateDropoffPoint(
+    @Param('pointId') id: string,
+    @Body() dto: UpdateDropoffPointDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.fleet.updateDropoffPoint(id, dto, user.municipalityId);
+  }
+
+  @Delete('dropoff-points/:pointId')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @ApiOperation({ summary: 'Delete drop-off point' })
+  @ApiParam({ name: 'pointId', description: 'Point ID' })
+  deleteDropoffPoint(@Param('pointId') id: string, @CurrentUser() user: JwtPayload) {
+    return this.fleet.deleteDropoffPoint(id, user.municipalityId);
+  }
+
   // ── Public Pickup Points ─────────────────────────────
   @Get('pickup-points')
   @ApiOperation({
@@ -144,7 +191,7 @@ export class FleetController {
   @ApiOperation({ summary: 'Get bus details by ID' })
   @ApiParam({ name: 'id' })
   findOneBus(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.fleet.findOneBus(user.municipalityId, id);
+    return this.fleet.findOneBus(user.municipalityId, id, user.role);
   }
 
   @Post('buses')
@@ -155,10 +202,10 @@ export class FleetController {
   })
   @ApiBody({ type: CreateBusDto })
   createBus(@CurrentUser() user: JwtPayload, @Body() dto: CreateBusDto) {
-    const municipalityId =
-      user.role === 'SUPER_ADMIN' && dto.municipalityId
-        ? dto.municipalityId
-        : user.municipalityId;
+    const isManagerOrAdmin = user.role === 'MANAGER' || user.role === 'SUPER_ADMIN';
+    const municipalityId = (isManagerOrAdmin && dto.municipalityId)
+      ? dto.municipalityId
+      : user.municipalityId;
     const driverId = user.role === 'DRIVER' ? user.sub : undefined;
     return this.fleet.createBus(municipalityId, dto, driverId);
   }
@@ -175,11 +222,32 @@ export class FleetController {
     @Param('id') id: string,
     @Body() dto: UpdateBusDto,
   ) {
-    const municipalityId =
-      user.role === 'SUPER_ADMIN' && dto.municipalityId
-        ? dto.municipalityId
-        : user.municipalityId;
+    const isManagerOrAdmin = user.role === 'MANAGER' || user.role === 'SUPER_ADMIN';
+    const municipalityId = (isManagerOrAdmin && dto.municipalityId)
+      ? dto.municipalityId
+      : user.municipalityId;
     return this.fleet.updateBus(municipalityId, id, dto);
+  }
+
+  @Put('buses/:id/layout')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER', 'MANAGER')
+  @ApiOperation({ summary: 'Create or replace seat layout of a bus' })
+  @ApiParam({ name: 'id', description: 'Bus ID' })
+  @ApiBody({ type: BusLayoutDto })
+  updateBusLayout(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: BusLayoutDto,
+  ) {
+    return this.fleet.updateBusLayout(id, user, dto);
+  }
+
+  @Get('buses/:id/layout')
+  @ApiOperation({ summary: 'Get seat layout of a bus' })
+  @ApiParam({ name: 'id', description: 'Bus ID' })
+  getBusLayout(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.fleet.getBusLayout(id, user.municipalityId, user.role);
   }
 
   // ── Drivers ──────────────────────────────────────────

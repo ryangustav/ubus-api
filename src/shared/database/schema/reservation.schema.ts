@@ -22,6 +22,7 @@ export const reservations = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     seatNumber: integer('seat_number'), // NULL = excess bus
+    pickupPointId: uuid('pickup_point_id'),
     isRideShare: boolean('is_ride_share').default(false), // Flag for guillotine
     status: reservationStatusEnum('status').default('CONFIRMED'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

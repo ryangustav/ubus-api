@@ -7,6 +7,7 @@ import {
   IsBoolean,
   Min,
   IsEnum,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateReserveDto {
@@ -36,6 +37,11 @@ export class CreateReserveDto {
   @IsBoolean()
   @IsOptional()
   isRideShare?: boolean;
+
+  @ApiPropertyOptional({ example: 'uuid-of-point', description: 'Selected pickup/dropoff point ID' })
+  @IsUUID()
+  @IsOptional()
+  pickupPointId?: string;
 }
 
 export class UpdateReservationDto {

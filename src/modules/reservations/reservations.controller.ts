@@ -21,6 +21,8 @@ import { CreateReserveDto, UpdateReservationDto } from './dto/reserve.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/guards/roles.decorator';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
+import type { JwtPayload } from '../auth/infrastructure/strategies/jwt.strategy';
 
 @ApiTags('reservations')
 @Controller('reservations')
@@ -56,8 +58,11 @@ export class ReservationsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List trip reservations' })
   @ApiParam({ name: 'tripId', example: '20260228-20120-M' })
-  listByTrip(@Param('tripId') tripId: string) {
-    return this.reservations.findByTrip(tripId);
+  listByTrip(
+    @Param('tripId') tripId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.reservations.findByTrip(tripId, user.sub, user.role, user.municipalityId);
   }
 
   @Get('trip/:tripId/occupied-seats')
@@ -74,8 +79,11 @@ export class ReservationsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get reservation by ID' })
   @ApiParam({ name: 'id', example: 'uuid' })
-  findOne(@Param('id') id: string) {
-    return this.reservations.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.reservations.findOne(id, user.sub, user.role, user.municipalityId);
   }
 
   @Patch(':id')

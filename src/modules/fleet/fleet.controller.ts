@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -71,6 +72,23 @@ export class FleetController {
         ? dto.municipalityId
         : user.municipalityId;
     return this.fleet.updateRoute(municipalityId, id, dto);
+  }
+
+  @Delete('routes/:id')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Excluir rota (apenas gestores da mesma municipalidade ou super-admin)' })
+  @ApiParam({ name: 'id', description: 'ID da rota a ser excluída (UUID)' })
+  @ApiResponse({ status: 204, description: 'A rota foi excluída com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Não é possível excluir uma rota ativa. Desative-a antes de excluir.' })
+  @ApiResponse({ status: 404, description: 'Rota não encontrada.' })
+  @ApiResponse({ status: 409, description: 'Não é possível excluir a rota pois existem viagens futuras planejadas.' })
+  async deleteRoute(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.fleet.deleteRoute(id, user.municipalityId, user.role);
   }
 
   // ── Points ───────────────────────────────────────────

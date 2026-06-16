@@ -212,4 +212,48 @@ describe('AuthService', () => {
       expect((result as any).user.role).toBe('STUDENT');
     });
   });
+
+  describe('verifyCode', () => {
+    const verifyDto = {
+      identifier: 'test@test.com',
+      code: '123456',
+      channel: 'EMAIL' as const,
+      context: 'RESET_PASSWORD' as const,
+    };
+
+    it('should return invalid if code not found in redis', async () => {
+      mockRedis.get.mockResolvedValueOnce(null);
+
+      const result = await service.verifyCode(verifyDto);
+      expect(result.verified).toBe(false);
+      expect(result.message).toBe('Código inválido ou expirado');
+    });
+
+    it('should lock out after 5 attempts', async () => {
+      mockRedis.get.mockResolvedValueOnce('123456');
+      mockRedis.incr.mockResolvedValueOnce(6);
+
+      const result = await service.verifyCode(verifyDto);
+      expect(result.verified).toBe(false);
+      expect(result.message).toBe('Número de tentativas excedido. Solicite um novo código.');
+      expect(mockRedis.del).toHaveBeenCalled();
+    });
+
+    it('should allow verification on correct code within limit', async () => {
+      mockRedis.get.mockResolvedValueOnce('123456');
+      mockRedis.incr.mockResolvedValueOnce(1);
+
+      const mockUser = [{ id: 'user1' }];
+      const mockChain = {
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue(mockUser),
+      };
+      db.select.mockReturnValue(mockChain as any);
+
+      const result = await service.verifyCode(verifyDto);
+      expect(result.verified).toBe(true);
+      expect(result.token).toBeDefined();
+    });
+  });
 });

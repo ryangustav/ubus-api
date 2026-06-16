@@ -31,17 +31,67 @@ describe('BusLeaderGuard', () => {
     expect(await guard.canActivate(mockContext({ sub: 'user1' }))).toBe(false);
   });
 
-  it('should allow if role is MANAGER or DRIVER', async () => {
+  it('should allow if role is MANAGER and bus belongs to their municipality', async () => {
+    const mockWhere = jest
+      .fn()
+      .mockResolvedValueOnce([{ municipalityId: 'mun1' }]);
+
+    const mockChain = {
+      from: jest.fn().mockReturnThis(),
+      where: mockWhere,
+    };
+    db.select.mockReturnValue(mockChain as any);
+
     expect(
       await guard.canActivate(
-        mockContext({ sub: 'user1', municipalityId: 'mun1', role: 'MANAGER' }),
+        mockContext(
+          { sub: 'user1', municipalityId: 'mun1', role: 'MANAGER' },
+          { id: 'bus1' },
+        ),
       ),
     ).toBe(true);
+  });
+
+  it('should allow if role is DRIVER and they are the driver of the bus', async () => {
+    const mockWhere = jest
+      .fn()
+      .mockResolvedValueOnce([{ municipalityId: 'mun1', driverId: 'user1' }]);
+
+    const mockChain = {
+      from: jest.fn().mockReturnThis(),
+      where: mockWhere,
+    };
+    db.select.mockReturnValue(mockChain as any);
+
     expect(
       await guard.canActivate(
-        mockContext({ sub: 'user1', municipalityId: 'mun1', role: 'DRIVER' }),
+        mockContext(
+          { sub: 'user1', municipalityId: 'mun1', role: 'DRIVER' },
+          { id: 'bus1' },
+        ),
       ),
     ).toBe(true);
+  });
+
+  it('should deny if role is DRIVER and they are not the driver of the bus', async () => {
+    const mockWhere = jest
+      .fn()
+      .mockResolvedValueOnce([{ municipalityId: 'mun1', driverId: 'user2' }]);
+
+    const mockChain = {
+      from: jest.fn().mockReturnThis(),
+      where: mockWhere,
+    };
+    db.select.mockReturnValue(mockChain as any);
+
+    expect(
+      await guard.canActivate(
+        mockContext(
+          { sub: 'user1', municipalityId: 'mun1', role: 'DRIVER' },
+          { id: 'bus1' },
+        ),
+      ),
+    ).toBe(false);
   });
 
   it('should deny if no params id (bus id)', async () => {

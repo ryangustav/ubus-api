@@ -58,6 +58,7 @@ export class AuthController {
   }
 
   @Post('password-email-send')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @ApiOperation({
     summary: 'Send password reset email',
     description:
@@ -111,6 +112,7 @@ export class AuthController {
   }
 
   @Post('password-redefinition')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @ApiOperation({
     summary: 'Reset password with token',
     description:
@@ -124,6 +126,7 @@ export class AuthController {
   }
 
   @Post('send-verification-code')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @ApiOperation({ summary: 'Request temporary 6-digit verification code' })
   @ApiBody({ type: SendVerificationCodeDto })
   @ApiResponse({ status: 200, description: 'Code sent successfully' })
@@ -132,6 +135,7 @@ export class AuthController {
   }
 
   @Post('verify')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Verify 6-digit code for a given context' })
   @ApiBody({ type: VerifyCodeDto })
   @ApiResponse({ status: 200, description: 'Verification results' })

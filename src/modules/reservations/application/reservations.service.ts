@@ -190,13 +190,45 @@ export class ReservationsService {
     }
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId: string, role: string, municipalityId: string) {
     const [reservation] = await this.db
       .select()
       .from(schema.reservations)
       .where(eq(schema.reservations.id, id));
     if (!reservation) throw new NotFoundException('Reservation not found');
-    return reservation;
+
+    if (role === 'SUPER_ADMIN') return reservation;
+    if (reservation.userId === userId) return reservation;
+
+    // Check manager of the reservation's user municipality
+    if (role === 'MANAGER') {
+      const [resUser] = await this.db
+        .select({ municipalityId: schema.users.municipalityId })
+        .from(schema.users)
+        .where(eq(schema.users.id, reservation.userId));
+      if (resUser && resUser.municipalityId === municipalityId) {
+        return reservation;
+      }
+    }
+
+    // Check if driver or leader of the trip
+    const [trip] = await this.db
+      .select({
+        driverId: schema.trips.driverId,
+        leaderIds: schema.trips.leaderIds,
+      })
+      .from(schema.trips)
+      .where(eq(schema.trips.id, reservation.tripId));
+
+    if (trip) {
+      const isDriver = trip.driverId === userId;
+      const isLeader = Array.isArray(trip.leaderIds) && trip.leaderIds.includes(userId);
+      if (isDriver || isLeader) {
+        return reservation;
+      }
+    }
+
+    throw new ForbiddenException('Not authorized to view this reservation');
   }
 
   async findMyReservations(userId: string) {
@@ -219,7 +251,34 @@ export class ReservationsService {
     }));
   }
 
-  async findByTrip(tripId: string) {
+  async findByTrip(tripId: string, userId: string, role: string, municipalityId: string) {
+    // 1. Fetch trip and its route
+    const [trip] = await this.db
+      .select()
+      .from(schema.trips)
+      .where(eq(schema.trips.id, tripId));
+    if (!trip) throw new NotFoundException('Trip not found');
+
+    const [route] = await this.db
+      .select({ municipalityId: schema.routes.municipalityId })
+      .from(schema.routes)
+      .where(eq(schema.routes.id, trip.routeId));
+    if (!route) throw new NotFoundException('Route not found');
+
+    // 2. Validate municipality
+    if (role !== 'SUPER_ADMIN' && route.municipalityId !== municipalityId) {
+      throw new ForbiddenException('Trip belongs to another municipality');
+    }
+
+    // 3. Validate permissions
+    const isLeader = Array.isArray(trip.leaderIds) && trip.leaderIds.includes(userId);
+    const isDriver = trip.driverId === userId;
+    const isManagerOrAdmin = role === 'MANAGER' || role === 'SUPER_ADMIN';
+
+    if (!isLeader && !isDriver && !isManagerOrAdmin) {
+      throw new ForbiddenException('Not authorized to view trip reservations');
+    }
+
     const rows = await this.db
       .select({
         reservation: schema.reservations,
@@ -235,8 +294,19 @@ export class ReservationsService {
 
     return rows.map((r) => ({
       ...r.reservation,
-      user: r.user,
+      user: {
+        ...r.user,
+        cpf: this.maskCpf(r.user.cpf),
+      },
     }));
+  }
+
+  private maskCpf(cpf: string): string {
+    const d = cpf.replace(/\D/g, '');
+    if (d.length === 11) {
+      return `***.*${d.slice(4, 6)}.${d.slice(6, 9)}-**`;
+    }
+    return cpf;
   }
 
   async getOccupiedSeats(tripId: string): Promise<number[]> {

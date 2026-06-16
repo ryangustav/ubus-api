@@ -4,11 +4,12 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { DRIZZLE } from '../../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gte, inArray } from 'drizzle-orm';
 
 @Injectable()
 export class FleetService {
@@ -98,6 +99,78 @@ export class FleetService {
       .returning();
     if (!route) throw new NotFoundException('Route not found');
     return route;
+  }
+
+  async deleteRoute(id: string, municipalityId: string, role: string) {
+    // 1. Fetch route
+    const [route] = await this.db
+      .select()
+      .from(schema.routes)
+      .where(eq(schema.routes.id, id));
+
+    if (!route) {
+      throw new NotFoundException('Rota não encontrada.');
+    }
+
+    // Tenant check
+    if (role !== 'SUPER_ADMIN' && route.municipalityId !== municipalityId) {
+      throw new ForbiddenException('Route belongs to another municipality');
+    }
+
+    // 2. Business Rule 1: check if active
+    if (route.active) {
+      throw new BadRequestException(
+        'Não é possível excluir uma rota ativa. Desative-a antes de excluir.',
+      );
+    }
+
+    // 3. Business Rule 2: check if there are future trips (today onwards)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const futureTrips = await this.db
+      .select({ id: schema.trips.id })
+      .from(schema.trips)
+      .where(
+        and(
+          eq(schema.trips.routeId, id),
+          gte(schema.trips.tripDate, todayStr),
+        ),
+      );
+
+    if (futureTrips.length > 0) {
+      throw new ConflictException(
+        'Não é possível excluir a rota pois existem viagens futuras planejadas.',
+      );
+    }
+
+    // 4. Disassociate route and route points from users
+    await this.db
+      .update(schema.users)
+      .set({ defaultRouteId: null })
+      .where(eq(schema.users.defaultRouteId, id));
+
+    // Get point IDs to disassociate defaultPointId from users
+    const routePoints = await this.db
+      .select({ id: schema.points.id })
+      .from(schema.points)
+      .where(eq(schema.points.routeId, id));
+
+    const pointIds = routePoints.map((p) => p.id);
+    if (pointIds.length > 0) {
+      await this.db
+        .update(schema.users)
+        .set({ defaultPointId: null })
+        .where(inArray(schema.users.defaultPointId, pointIds));
+    }
+
+    // 5. Delete past trips (which will delete past reservations in cascade)
+    await this.db
+      .delete(schema.trips)
+      .where(eq(schema.trips.routeId, id));
+
+    // 6. Delete route (will delete points and dropoffPoints in cascade)
+    await this.db
+      .delete(schema.routes)
+      .where(eq(schema.routes.id, id));
   }
 
   // ── Points (pickup points) ───────────────────────────

@@ -20,7 +20,7 @@ export class BusLeaderGuard implements CanActivate {
     const user = req.user;
     if (!user?.sub || !user?.municipalityId) return false;
 
-    if (user.role === 'MANAGER' || user.role === 'DRIVER') return true;
+    if (user.role === 'SUPER_ADMIN') return true;
 
     const busId = req.params?.id;
     if (!busId) return false;
@@ -30,7 +30,16 @@ export class BusLeaderGuard implements CanActivate {
       .from(schema.buses)
       .where(eq(schema.buses.id, busId));
 
-    if (!bus || bus.municipalityId !== user.municipalityId) return false;
+    if (!bus) return false;
+
+    // Check municipality matching
+    if (bus.municipalityId !== user.municipalityId) return false;
+
+    if (user.role === 'MANAGER') return true;
+
+    if (user.role === 'DRIVER') {
+      return bus.driverId === user.sub;
+    }
 
     const trips = await this.db
       .select({ leaderIds: schema.trips.leaderIds })

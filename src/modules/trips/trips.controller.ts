@@ -82,8 +82,11 @@ export class TripsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a trip (manager only)' })
   @ApiBody({ type: CreateTripDto })
-  createTrip(@Body() dto: CreateTripDto) {
-    return this.trips.createTrip(dto);
+  createTrip(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateTripDto,
+  ) {
+    return this.trips.createTrip(dto, user.municipalityId, user.role);
   }
 
   @Patch(':tripId')
@@ -93,8 +96,12 @@ export class TripsController {
   @ApiOperation({ summary: 'Update trip (manager only)' })
   @ApiParam({ name: 'tripId' })
   @ApiBody({ type: UpdateTripDto })
-  updateTrip(@Param('tripId') tripId: string, @Body() dto: UpdateTripDto) {
-    return this.trips.updateTrip(tripId, dto);
+  updateTrip(
+    @Param('tripId') tripId: string,
+    @Body() dto: UpdateTripDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.trips.updateTrip(tripId, dto, user.municipalityId, user.role);
   }
 
   @Patch(':tripId/driver')

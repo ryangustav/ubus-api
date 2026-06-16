@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { FleetService } from './fleet.service';
 import { DRIZZLE } from '../../../shared/database/database.module';
 import { mockDrizzle } from '../../../../test/helpers/drizzle-mock';
-import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException, BadRequestException, ConflictException } from '@nestjs/common';
 
 describe('FleetService', () => {
   let service: FleetService;
@@ -281,6 +281,120 @@ describe('FleetService', () => {
       await expect(
         service.getBusLayout('bus1', 'mun1', 'STUDENT'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('deleteRoute', () => {
+    it('should throw NotFoundException if route does not exist', async () => {
+      const selectChain = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([]),
+      };
+      db.select.mockReturnValue(selectChain as any);
+
+      let error: any;
+      try {
+        await service.deleteRoute('route1', 'mun1', 'MANAGER');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if route belongs to another municipality', async () => {
+      const selectChain = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([{ id: 'route1', municipalityId: 'mun2' }]),
+      };
+      db.select.mockReturnValue(selectChain as any);
+
+      let error: any;
+      try {
+        await service.deleteRoute('route1', 'mun1', 'MANAGER');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(ForbiddenException);
+    });
+
+    it('should throw BadRequestException if route is active', async () => {
+      const selectChain = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([{ id: 'route1', municipalityId: 'mun1', active: true }]),
+      };
+      db.select.mockReturnValue(selectChain as any);
+
+      let error: any;
+      try {
+        await service.deleteRoute('route1', 'mun1', 'MANAGER');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(BadRequestException);
+    });
+
+    it('should throw ConflictException if route has future trips', async () => {
+      // 1st select: route
+      const selectChainRoute = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([{ id: 'route1', municipalityId: 'mun1', active: false }]),
+      };
+      // 2nd select: trips
+      const selectChainTrips = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([{ id: 'trip1' }]),
+      };
+
+      db.select
+        .mockReturnValueOnce(selectChainRoute as any)
+        .mockReturnValueOnce(selectChainTrips as any);
+
+      let error: any;
+      try {
+        await service.deleteRoute('route1', 'mun1', 'MANAGER');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(ConflictException);
+    });
+
+    it('should successfully delete route and disassociate users', async () => {
+      // 1st select: route
+      const selectChainRoute = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([{ id: 'route1', municipalityId: 'mun1', active: false }]),
+      };
+      // 2nd select: trips
+      const selectChainTrips = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([]),
+      };
+      // 3rd select: points
+      const selectChainPoints = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue([{ id: 'point1' }]),
+      };
+
+      db.select
+        .mockReturnValueOnce(selectChainRoute as any)
+        .mockReturnValueOnce(selectChainTrips as any)
+        .mockReturnValueOnce(selectChainPoints as any);
+
+      const updateChain = {
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockResolvedValue({}),
+      };
+      db.update.mockReturnValue(updateChain as any);
+
+      const deleteChain = {
+        where: jest.fn().mockResolvedValue({}),
+      };
+      db.delete.mockReturnValue(deleteChain as any);
+
+      await service.deleteRoute('route1', 'mun1', 'MANAGER');
+
+      expect(db.delete).toHaveBeenCalledTimes(2);
+      expect(db.update).toHaveBeenCalledTimes(2);
     });
   });
 });

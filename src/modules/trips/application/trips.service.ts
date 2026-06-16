@@ -24,19 +24,43 @@ export class TripsService {
     @InjectRedis() private redis: Redis,
   ) {}
 
-  async createTrip(dto: {
-    tripId: string;
-    tripDate: string;
-    shift: string;
-    direction: 'OUTBOUND' | 'INBOUND';
-    routeId: string;
-    busId: string;
-    driverId?: string;
-    realCapacity: number;
-    votingOpen: string;
-    votingClose: string;
-    leaderIds?: string[];
-  }) {
+  async createTrip(
+    dto: {
+      tripId: string;
+      tripDate: string;
+      shift: string;
+      direction: 'OUTBOUND' | 'INBOUND';
+      routeId: string;
+      busId: string;
+      driverId?: string;
+      realCapacity: number;
+      votingOpen: string;
+      votingClose: string;
+      leaderIds?: string[];
+    },
+    municipalityId?: string,
+    role?: string,
+  ) {
+    if (role !== 'SUPER_ADMIN' && municipalityId) {
+      const [route] = await this.db
+        .select({ municipalityId: schema.routes.municipalityId })
+        .from(schema.routes)
+        .where(eq(schema.routes.id, dto.routeId));
+      if (!route) throw new NotFoundException('Route not found');
+      if (route.municipalityId !== municipalityId) {
+        throw new ForbiddenException('Route belongs to another municipality');
+      }
+
+      const [bus] = await this.db
+        .select({ municipalityId: schema.buses.municipalityId })
+        .from(schema.buses)
+        .where(eq(schema.buses.id, dto.busId));
+      if (!bus) throw new NotFoundException('Bus not found');
+      if (bus.municipalityId !== municipalityId) {
+        throw new ForbiddenException('Bus belongs to another municipality');
+      }
+    }
+
     const [route] = await this.db
       .select({ requiresElevator: schema.routes.requiresElevator })
       .from(schema.routes)
@@ -120,7 +144,49 @@ export class TripsService {
       leaderIds: string[];
       status: string;
     }>,
+    municipalityId?: string,
+    role?: string,
   ) {
+    const [existingTrip] = await this.db
+      .select()
+      .from(schema.trips)
+      .where(eq(schema.trips.id, tripId));
+    if (!existingTrip) throw new NotFoundException('Trip not found');
+
+    if (role !== 'SUPER_ADMIN' && municipalityId) {
+      // Validate existing trip's route municipality
+      const [existingRoute] = await this.db
+        .select({ municipalityId: schema.routes.municipalityId })
+        .from(schema.routes)
+        .where(eq(schema.routes.id, existingTrip.routeId));
+      if (!existingRoute || existingRoute.municipalityId !== municipalityId) {
+        throw new ForbiddenException('Trip belongs to another municipality');
+      }
+
+      // If updating routeId, check new route
+      if (dto.routeId) {
+        const [newRoute] = await this.db
+          .select({ municipalityId: schema.routes.municipalityId })
+          .from(schema.routes)
+          .where(eq(schema.routes.id, dto.routeId));
+        if (!newRoute) throw new NotFoundException('Route not found');
+        if (newRoute.municipalityId !== municipalityId) {
+          throw new ForbiddenException('Route belongs to another municipality');
+        }
+      }
+
+      // If updating busId, check new bus
+      if (dto.busId) {
+        const [newBus] = await this.db
+          .select({ municipalityId: schema.buses.municipalityId })
+          .from(schema.buses)
+          .where(eq(schema.buses.id, dto.busId));
+        if (!newBus) throw new NotFoundException('Bus not found');
+        if (newBus.municipalityId !== municipalityId) {
+          throw new ForbiddenException('Bus belongs to another municipality');
+        }
+      }
+    }
     const updates: Record<string, unknown> = {};
     if (dto.tripDate !== undefined) updates.tripDate = dto.tripDate;
     if (dto.shift !== undefined) updates.shift = dto.shift;

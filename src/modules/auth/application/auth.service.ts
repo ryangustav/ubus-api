@@ -13,7 +13,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
 import { and, eq } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { loginSchema, LoginDto } from './dto/login.dto';
 import { registerSchema } from './dto/register.dto';
 import { passwordRedefinitionSchema } from './dto/password-reset.dto';
@@ -100,9 +100,7 @@ export class AuthService {
     }
 
     const hash = await bcrypt.hash(parsed.data.password, 10);
-    const verificationCode = Math.floor(
-      100000 + Math.random() * 900000,
-    ).toString();
+    const verificationCode = randomInt(100000, 1000000).toString();
 
     const [user] = await this.db
       .insert(schema.users)
@@ -305,7 +303,7 @@ export class AuthService {
     channel: 'EMAIL' | 'WHATSAPP';
     context: 'CHANGE_EMAIL' | 'RESET_PASSWORD' | 'REGISTER';
   }): Promise<{ message: string }> {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = randomInt(100000, 1000000).toString();
     const redisKey = `verification-code:${dto.context}:${dto.channel}:${dto.identifier}`;
 
     // Save code in Redis for 10 minutes
@@ -335,17 +333,48 @@ export class AuthService {
     context: 'CHANGE_EMAIL' | 'RESET_PASSWORD' | 'REGISTER';
   }): Promise<{ verified: boolean; token?: string; message?: string }> {
     const redisKey = `verification-code:${dto.context}:${dto.channel}:${dto.identifier}`;
+    const attemptsKey = `verification-attempts:${dto.context}:${dto.channel}:${dto.identifier}`;
     const storedCode = await this.redis.get(redisKey);
 
-    if (!storedCode || storedCode !== dto.code) {
+    if (!storedCode) {
       return {
         verified: false,
         message: 'Código inválido ou expirado',
       };
     }
 
-    // Delete the verified code from Redis
+    const attempts = await this.redis.incr(attemptsKey);
+    if (attempts === 1) {
+      await this.redis.expire(attemptsKey, 600); // 10 min TTL
+    }
+
+    if (attempts > 5) {
+      await this.redis.del(redisKey);
+      await this.redis.del(attemptsKey);
+      return {
+        verified: false,
+        message: 'Número de tentativas excedido. Solicite um novo código.',
+      };
+    }
+
+    if (storedCode !== dto.code) {
+      if (attempts >= 5) {
+        await this.redis.del(redisKey);
+        await this.redis.del(attemptsKey);
+        return {
+          verified: false,
+          message: 'Número de tentativas excedido. Solicite um novo código.',
+        };
+      }
+      return {
+        verified: false,
+        message: 'Código inválido ou expirado',
+      };
+    }
+
+    // Delete the verified code and attempts from Redis
     await this.redis.del(redisKey);
+    await this.redis.del(attemptsKey);
 
     if (dto.context === 'RESET_PASSWORD') {
       // Find the user to associate with the reset token

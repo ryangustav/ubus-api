@@ -274,6 +274,27 @@ export class TripsService {
       );
     }
 
+    let shiftVal = dto.shift;
+    if (route.departureTimeOutbound) {
+      const hour = parseInt(route.departureTimeOutbound.split(':')[0], 10);
+      if (!isNaN(hour)) {
+        if (hour >= 0 && hour < 12) {
+          shiftVal = 'MORNING';
+        } else if (hour >= 12 && hour < 18) {
+          shiftVal = 'AFTERNOON';
+        } else {
+          shiftVal = 'NIGHT';
+        }
+      }
+    }
+
+    const shiftChar = shiftVal.toUpperCase().startsWith('M')
+      ? 'M'
+      : shiftVal.toUpperCase().startsWith('A') ||
+          shiftVal.toUpperCase().startsWith('T')
+        ? 'T'
+        : 'N';
+
     const created: any[] = [];
     const warnings: any[] = [];
     const directions: ('OUTBOUND' | 'INBOUND')[] = ['OUTBOUND', 'INBOUND'];
@@ -285,13 +306,6 @@ export class TripsService {
       const month = parts[1];
       const day = parts[2];
       const smartDate = `${year}${month}${day}`;
-
-      const shiftChar = dto.shift.toUpperCase().startsWith('M')
-        ? 'M'
-        : dto.shift.toUpperCase().startsWith('A') ||
-            dto.shift.toUpperCase().startsWith('T')
-          ? 'T'
-          : 'N';
 
       for (const direction of directions) {
         const suffix = direction === 'OUTBOUND' ? 'O' : 'I';
@@ -320,7 +334,7 @@ export class TripsService {
             .values({
               id: tripId,
               tripDate: dateStr,
-              shift: dto.shift,
+              shift: shiftVal,
               direction: direction,
               routeId: dto.routeId,
               busId: dto.busId,

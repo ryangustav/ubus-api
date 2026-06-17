@@ -90,6 +90,16 @@ export class CreateRouteDto {
   })
   @IsOptional()
   departureTimeInbound?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-driver', nullable: true })
+  @IsUUID()
+  @IsOptional()
+  driverId?: string | null;
+
+  @ApiPropertyOptional({ example: 'uuid-of-bus', nullable: true })
+  @IsUUID()
+  @IsOptional()
+  busId?: string | null;
 }
 
 export class UpdateRouteDto {
@@ -169,4 +179,14 @@ export class UpdateRouteDto {
   })
   @IsOptional()
   departureTimeInbound?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-driver', nullable: true })
+  @IsUUID()
+  @IsOptional()
+  driverId?: string | null;
+
+  @ApiPropertyOptional({ example: 'uuid-of-bus', nullable: true })
+  @IsUUID()
+  @IsOptional()
+  busId?: string | null;
 }

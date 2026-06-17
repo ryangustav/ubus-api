@@ -75,6 +75,46 @@ export class FleetController {
     return this.fleet.updateRoute(municipalityId, id, dto);
   }
 
+  @Patch('routes/:id/bus')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @ApiOperation({ summary: 'Assign a default bus to a route (manager only)' })
+  @ApiParam({ name: 'id', description: 'Route ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { busId: { type: 'string', nullable: true } },
+      required: ['busId'],
+    },
+  })
+  assignBus(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { busId: string | null },
+  ) {
+    return this.fleet.updateRoute(user.municipalityId, id, { busId: dto.busId });
+  }
+
+  @Patch('routes/:id/driver')
+  @UseGuards(RolesGuard)
+  @Roles('MANAGER')
+  @ApiOperation({ summary: 'Assign a default driver to a route (manager only)' })
+  @ApiParam({ name: 'id', description: 'Route ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { driverId: { type: 'string', nullable: true } },
+      required: ['driverId'],
+    },
+  })
+  assignDriver(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { driverId: string | null },
+  ) {
+    return this.fleet.updateRoute(user.municipalityId, id, { driverId: dto.driverId });
+  }
+
   @Delete('routes/:id')
   @UseGuards(RolesGuard)
   @Roles('MANAGER')

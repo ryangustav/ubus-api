@@ -38,6 +38,8 @@ export const routes = pgTable(
     departureTimeInbound: varchar('departure_time_inbound', { length: 5 }),
     active: boolean('is_active').default(true),
     requiresElevator: boolean('requires_elevator').default(false).notNull(),
+    driverId: uuid('driver_id').references(() => users.id, { onDelete: 'set null' }),
+    busId: uuid('bus_id').references(() => buses.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [

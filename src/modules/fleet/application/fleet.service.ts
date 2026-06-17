@@ -38,6 +38,8 @@ export class FleetService {
       votingCloseTime: string;
       departureTimeOutbound?: string;
       departureTimeInbound?: string;
+      driverId?: string | null;
+      busId?: string | null;
     },
   ) {
     const [route] = await this.db
@@ -51,6 +53,8 @@ export class FleetService {
         votingCloseTime: dto.votingCloseTime,
         departureTimeOutbound: dto.departureTimeOutbound ?? null,
         departureTimeInbound: dto.departureTimeInbound ?? null,
+        driverId: dto.driverId ?? null,
+        busId: dto.busId ?? null,
       })
       .returning();
     return route;
@@ -69,6 +73,8 @@ export class FleetService {
       requiresElevator?: boolean;
       departureTimeOutbound?: string;
       departureTimeInbound?: string;
+      driverId?: string | null;
+      busId?: string | null;
     },
   ) {
     const updates: Partial<typeof schema.routes.$inferInsert> = {};
@@ -86,6 +92,8 @@ export class FleetService {
       updates.departureTimeOutbound = dto.departureTimeOutbound;
     if (dto.departureTimeInbound !== undefined)
       updates.departureTimeInbound = dto.departureTimeInbound;
+    if (dto.driverId !== undefined) updates.driverId = dto.driverId;
+    if (dto.busId !== undefined) updates.busId = dto.busId;
 
     const [route] = await this.db
       .update(schema.routes)
@@ -710,7 +718,7 @@ export class FleetService {
       throw new ForbiddenException('Acesso negado');
     }
 
-    const sanitizedRows = this.validateAndSanitizeLayout(bus, dto);
+    const sanitizedRows = this.validateAndSanitizeLayout(bus as any, dto);
 
     await this.db
       .update(schema.buses)

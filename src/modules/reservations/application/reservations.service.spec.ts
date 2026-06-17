@@ -70,6 +70,7 @@ describe('ReservationsService', () => {
       const mockWhere = jest
         .fn()
         .mockResolvedValueOnce(mockUser) // user
+        .mockResolvedValueOnce([]) // duplicate check
         .mockResolvedValueOnce([]); // trip
 
       const mockChain = {
@@ -92,6 +93,7 @@ describe('ReservationsService', () => {
       const mockWhere = jest
         .fn()
         .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce([]) // duplicate check
         .mockResolvedValueOnce(mockTrip);
 
       const mockChain = {
@@ -125,6 +127,7 @@ describe('ReservationsService', () => {
       const mockWhere = jest
         .fn()
         .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce([]) // duplicate check
         .mockResolvedValueOnce(mockTrip)
         .mockResolvedValueOnce(Array(39).fill({ seatNumber: 1 })); // getOccupiedSeats
 
@@ -148,6 +151,7 @@ describe('ReservationsService', () => {
       const mockWhere = jest
         .fn()
         .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce([]) // duplicate check
         .mockResolvedValueOnce(mockTrip)
         .mockResolvedValueOnce(Array(40).fill({ seatNumber: 1 }));
 
@@ -187,6 +191,7 @@ describe('ReservationsService', () => {
       const mockWhere = jest
         .fn()
         .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce([]) // duplicate check
         .mockResolvedValueOnce(mockTrip)
         .mockResolvedValueOnce([]); // dropoffPoints (not found)
 
@@ -226,6 +231,7 @@ describe('ReservationsService', () => {
       const mockWhere = jest
         .fn()
         .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce([]) // duplicate check
         .mockResolvedValueOnce(mockTrip)
         .mockResolvedValueOnce(mockPickupPoint) // points validation
         .mockResolvedValueOnce(mockLayout); // busLayouts
@@ -243,6 +249,28 @@ describe('ReservationsService', () => {
           seatNumber: 99, // seat 99 not in layout
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw ConflictException if user already has an active reservation for this trip', async () => {
+      const mockUser = [
+        { id: 'user1', registrationStatus: 'APPROVED', needsWheelchair: false },
+      ];
+      const mockExistingReservation = [{ id: 'resExisting', tripId: 'trip1', userId: 'user1' }];
+
+      const mockWhere = jest
+        .fn()
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(mockExistingReservation); // duplicate check returns a reservation
+
+      const mockChain = {
+        from: jest.fn().mockReturnThis(),
+        where: mockWhere,
+      };
+      db.select.mockReturnValue(mockChain as any);
+
+      await expect(
+        service.create({ tripId: 'trip1', userId: 'user1', seatNumber: 1 }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

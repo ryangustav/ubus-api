@@ -9,7 +9,7 @@ import {
 import { DRIZZLE } from '../../../shared/database/database.module';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../shared/database/schema';
-import { eq, and, isNotNull, gte } from 'drizzle-orm';
+import { eq, and, isNotNull, gte, ne } from 'drizzle-orm';
 
 @Injectable()
 export class ReservationsService {
@@ -51,6 +51,21 @@ export class ReservationsService {
         errorCode: 'ACCOUNT_SUSPENDED',
         error: 'Forbidden',
       });
+    }
+
+    // 1b. Check if user already has an active reservation for this trip
+    const [existingReservation] = await this.db
+      .select()
+      .from(schema.reservations)
+      .where(
+        and(
+          eq(schema.reservations.tripId, dto.tripId),
+          eq(schema.reservations.userId, dto.userId),
+          ne(schema.reservations.status, 'CANCELLED_BY_SYSTEM'),
+        ),
+      );
+    if (existingReservation) {
+      throw new ConflictException('User already has a reservation for this trip');
     }
 
     // 2. Fetch Trip

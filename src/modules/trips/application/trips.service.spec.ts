@@ -332,5 +332,91 @@ describe('TripsService', () => {
       expect(capturedValues[0].id).toBe('20260617-10155-N-O');
       expect(capturedValues[0].shift).toBe('NIGHT');
     });
+
+    it('should update existing trip to OPEN_FOR_RESERVATION instead of skipping', async () => {
+      const routeMock = {
+        id: 'route-1',
+        municipalityId: 'mun-1',
+        weekDays: [1, 2, 3, 4, 5],
+        votingOpenTime: '08:00',
+        votingCloseTime: '18:00',
+        requiresElevator: false,
+        departureTimeOutbound: '08:30',
+      };
+
+      const busMock = {
+        id: 'bus-1',
+        identificationNumber: '10155',
+        hasElevator: true,
+        municipalityId: 'mun-1',
+      };
+
+      const existingTrip = { id: '20260617-10155-M-O', status: 'SCHEDULED' };
+
+      // Mock sequence:
+      // 1. Select Route
+      // 2. Select Bus
+      // 3. Select existing trip OUTBOUND -> exists!
+      // 4. Select existing trip INBOUND -> does not exist
+      const mockWhere = jest
+        .fn()
+        .mockResolvedValueOnce([routeMock]) // route
+        .mockResolvedValueOnce([busMock]) // bus
+        .mockResolvedValueOnce([existingTrip]) // existing OUTBOUND found
+        .mockResolvedValueOnce([]); // existing INBOUND not found
+
+      const mockChain = {
+        from: jest.fn().mockReturnThis(),
+        where: mockWhere,
+      };
+      db.select.mockReturnValue(mockChain as any);
+
+      // Mock update for existing trip
+      const capturedUpdateSets: any[] = [];
+      const updateChain = {
+        set: jest.fn().mockImplementation((val) => {
+          capturedUpdateSets.push(val);
+          return updateChain;
+        }),
+        where: jest.fn().mockReturnThis(),
+        returning: jest.fn().mockResolvedValue([{ id: '20260617-10155-M-O', status: 'OPEN_FOR_RESERVATION' }]),
+      };
+      db.update.mockReturnValue(updateChain as any);
+
+      // Mock insert for the INBOUND trip (does not exist)
+      const capturedInsertValues: any[] = [];
+      const mockInsertChain = {
+        values: jest.fn().mockImplementation((val) => {
+          capturedInsertValues.push(val);
+          return mockInsertChain;
+        }),
+        returning: jest.fn().mockResolvedValue([{ id: '20260617-10155-M-I' }]),
+      };
+      db.insert.mockReturnValue(mockInsertChain as any);
+
+      const result = await service.scheduleTrips(
+        {
+          routeId: 'route-1',
+          busId: 'bus-1',
+          dates: ['2026-06-17'],
+          shift: 'NIGHT',
+          direction: 'OUTBOUND',
+          realCapacity: 40,
+        },
+        'mun-1',
+      );
+
+      // Both trips should be in the result (1 updated + 1 inserted)
+      expect(result.scheduledCount).toBe(2);
+
+      // Existing OUTBOUND trip was updated (not inserted)
+      expect(db.update).toHaveBeenCalled();
+      expect(capturedUpdateSets[0].status).toBe('OPEN_FOR_RESERVATION');
+
+      // New INBOUND trip was inserted
+      expect(db.insert).toHaveBeenCalled();
+      expect(capturedInsertValues[0].id).toBe('20260617-10155-M-I');
+      expect(capturedInsertValues[0].status).toBe('OPEN_FOR_RESERVATION');
+    });
   });
 });

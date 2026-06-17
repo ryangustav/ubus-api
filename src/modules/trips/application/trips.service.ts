@@ -85,6 +85,7 @@ export class TripsService {
         votingOpenAt: new Date(dto.votingOpen),
         votingCloseAt: new Date(dto.votingClose),
         leaderIds: dto.leaderIds ?? [],
+        status: 'OPEN_FOR_RESERVATION',
       })
       .returning();
 
@@ -347,6 +348,30 @@ export class TripsService {
             .returning();
 
           created.push(trip);
+
+          if (route.requiresElevator && !bus.hasElevator) {
+            warnings.push({ tripId, warning: 'BUS_NO_ELEVATOR' });
+          }
+        } else {
+          // Trip already exists — update it to OPEN_FOR_RESERVATION
+          const [updated] = await this.db
+            .update(schema.trips)
+            .set({
+              tripDate: dateStr,
+              shift: shiftVal,
+              direction: direction,
+              routeId: dto.routeId,
+              busId: dto.busId,
+              driverId: dto.driverId ?? null,
+              actualCapacity: dto.realCapacity,
+              votingOpenAt,
+              votingCloseAt,
+              status: 'OPEN_FOR_RESERVATION',
+            })
+            .where(eq(schema.trips.id, tripId))
+            .returning();
+
+          created.push(updated);
 
           if (route.requiresElevator && !bus.hasElevator) {
             warnings.push({ tripId, warning: 'BUS_NO_ELEVATOR' });

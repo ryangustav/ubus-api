@@ -276,6 +276,7 @@ export class TripsService {
 
     const created: any[] = [];
     const warnings: any[] = [];
+    const directions: ('OUTBOUND' | 'INBOUND')[] = ['OUTBOUND', 'INBOUND'];
 
     for (const dateStr of targetDates) {
       const parts = dateStr.split('-');
@@ -292,43 +293,50 @@ export class TripsService {
           ? 'T'
           : 'N';
 
-      const tripId = `${smartDate}-${bus.identificationNumber}-${shiftChar}`;
+      for (const direction of directions) {
+        const suffix = direction === 'OUTBOUND' ? 'O' : 'I';
+        const tripId = `${smartDate}-${bus.identificationNumber}-${shiftChar}-${suffix}`;
 
-      const votingOpenAt = new Date(
-        `${dateStr}T${route.votingOpenTime}:00.000Z`,
-      );
-      const votingCloseAt = new Date(
-        `${dateStr}T${route.votingCloseTime}:00.000Z`,
-      );
+        const votingOpenAt = new Date(
+          `${dateStr}T${route.votingOpenTime}:00.000Z`,
+        );
+        const votingCloseAt = new Date(
+          `${dateStr}T${route.votingCloseTime}:00.000Z`,
+        );
 
-      // Check if trip already exists
-      const [existing] = await this.db
-        .select()
-        .from(schema.trips)
-        .where(eq(schema.trips.id, tripId));
+        if (route.votingOpenTime > route.votingCloseTime) {
+          votingOpenAt.setUTCDate(votingOpenAt.getUTCDate() - 1);
+        }
 
-      if (!existing) {
-        const [trip] = await this.db
-          .insert(schema.trips)
-          .values({
-            id: tripId,
-            tripDate: dateStr,
-            shift: dto.shift,
-            direction: dto.direction,
-            routeId: dto.routeId,
-            busId: dto.busId,
-            driverId: dto.driverId ?? null,
-            actualCapacity: dto.realCapacity,
-            votingOpenAt,
-            votingCloseAt,
-            status: 'OPEN_FOR_RESERVATION',
-          })
-          .returning();
+        // Check if trip already exists
+        const [existing] = await this.db
+          .select()
+          .from(schema.trips)
+          .where(eq(schema.trips.id, tripId));
 
-        created.push(trip);
+        if (!existing) {
+          const [trip] = await this.db
+            .insert(schema.trips)
+            .values({
+              id: tripId,
+              tripDate: dateStr,
+              shift: dto.shift,
+              direction: direction,
+              routeId: dto.routeId,
+              busId: dto.busId,
+              driverId: dto.driverId ?? null,
+              actualCapacity: dto.realCapacity,
+              votingOpenAt,
+              votingCloseAt,
+              status: 'OPEN_FOR_RESERVATION',
+            })
+            .returning();
 
-        if (route.requiresElevator && !bus.hasElevator) {
-          warnings.push({ tripId, warning: 'BUS_NO_ELEVATOR' });
+          created.push(trip);
+
+          if (route.requiresElevator && !bus.hasElevator) {
+            warnings.push({ tripId, warning: 'BUS_NO_ELEVATOR' });
+          }
         }
       }
     }

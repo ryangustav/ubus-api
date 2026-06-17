@@ -323,30 +323,28 @@ export class ReservationsService {
   }
 
   async getOccupiedSeatsDetailed(tripId: string) {
-    // 1. Fetch trip and its bus to get preferentialSeats
-    const [tripWithBus] = await this.db
+    const rows = await this.db
       .select({
-        trip: schema.trips,
-        bus: schema.buses,
+        seatNumber: schema.reservations.seatNumber,
+        userId: schema.users.id,
+        userName: schema.users.name,
       })
-      .from(schema.trips)
-      .innerJoin(schema.buses, eq(schema.trips.busId, schema.buses.id))
-      .where(eq(schema.trips.id, tripId));
+      .from(schema.reservations)
+      .innerJoin(schema.users, eq(schema.reservations.userId, schema.users.id))
+      .where(
+        and(
+          eq(schema.reservations.tripId, tripId),
+          eq(schema.reservations.status, 'CONFIRMED'),
+        ),
+      );
 
-    const preferentialSeats = tripWithBus?.bus?.preferentialSeats ?? [];
-
-    // 2. Fetch occupied seats
-    const occupiedSeats = await this.getOccupiedSeats(tripId);
-
-    // 3. Find preferential occupied seats (seats in preferential list)
-    const preferentialOccupiedSeats = occupiedSeats.filter((seat) =>
-      preferentialSeats.includes(seat),
-    );
-
-    return {
-      occupiedSeats,
-      preferentialOccupiedSeats,
-    };
+    return rows
+      .filter((r) => r.seatNumber != null)
+      .map((r) => ({
+        seatNumber: r.seatNumber!,
+        userId: r.userId,
+        userName: r.userName,
+      }));
   }
 
   /**

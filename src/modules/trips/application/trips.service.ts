@@ -123,52 +123,11 @@ export class TripsService {
         ),
       );
 
-    // Group trips by route + date + bus so OUTBOUND and INBOUND
-    // appear as a single entry with available directions
-    const groupMap = new Map<
-      string,
-      {
-        route: (typeof rows)[0]['route'];
-        bus: (typeof rows)[0]['bus'];
-        tripDate: string;
-        shift: string;
-        routeId: string;
-        busId: string;
-        votingOpenAt: Date;
-        votingCloseAt: Date;
-        actualCapacity: number;
-        availableDirections: {
-          direction: string;
-          tripId: string;
-        }[];
-      }
-    >();
-
-    for (const r of rows) {
-      const key = `${r.trip.routeId}|${r.trip.tripDate}|${r.trip.busId}`;
-      let group = groupMap.get(key);
-      if (!group) {
-        group = {
-          route: r.route,
-          bus: r.bus,
-          tripDate: r.trip.tripDate,
-          shift: r.trip.shift,
-          routeId: r.trip.routeId,
-          busId: r.trip.busId,
-          votingOpenAt: r.trip.votingOpenAt,
-          votingCloseAt: r.trip.votingCloseAt,
-          actualCapacity: r.trip.actualCapacity,
-          availableDirections: [],
-        };
-        groupMap.set(key, group);
-      }
-      group.availableDirections.push({
-        direction: r.trip.direction,
-        tripId: r.trip.id,
-      });
-    }
-
-    return Array.from(groupMap.values());
+    return rows.map((r) => ({
+      ...r.trip,
+      route: r.route,
+      bus: r.bus,
+    }));
   }
 
   async updateTrip(
